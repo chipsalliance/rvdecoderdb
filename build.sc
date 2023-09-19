@@ -10,10 +10,12 @@ import $file.common
 object v {
   val scala = "2.13.12"
   val pprint = ivy"com.lihaoyi::pprint:0.8.1"
+  val oslib = ivy"com.lihaoyi::os-lib:0.9.1"
 }
 
 object rvdecoderdb extends common.RVDecoderDBModule with ScalafmtModule { m =>
   def millSourcePath = os.pwd / "rvdecoderdb"
   def scalaVersion = T(v.scala)
   def pprintIvy = v.pprint
+  def osLibIvy = v.oslib
 }

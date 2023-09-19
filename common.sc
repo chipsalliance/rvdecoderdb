@@ -6,5 +6,7 @@ import mill.scalalib._
 
 trait RVDecoderDBModule extends ScalaModule {
   def pprintIvy: Dep
-  override def ivyDeps = super.ivyDeps() ++ Some(pprintIvy)
+  def osLibIvy: Dep
+
+  override def ivyDeps = super.ivyDeps() ++ Some(pprintIvy) ++ Some(osLibIvy)
 }
