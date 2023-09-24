@@ -16,6 +16,12 @@ object v {
 object rvdecoderdb extends common.RVDecoderDBModule with ScalafmtModule { m =>
   def millSourcePath = os.pwd / "rvdecoderdb"
   def scalaVersion = T(v.scala)
-  def pprintIvy = v.pprint
   def osLibIvy = v.oslib
+}
+
+object rvdecoderdbtest extends common.RVDecoderDBTestModule with ScalafmtModule { m =>
+  def rvdecoderdbModule = rvdecoderdb
+  def millSourcePath = os.pwd / "rvdecoderdbtest"
+  def scalaVersion = T(v.scala)
+  def pprintIvy = v.pprint
 }
