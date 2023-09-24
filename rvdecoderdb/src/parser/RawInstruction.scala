@@ -41,8 +41,9 @@ class RawInstruction(tokens: Seq[Token]) {
   }
 
   def encoding: Encoding = tokens.flatMap {
-    case b: BitValue        => Some(Encoding(b.value << b.bit, 1 << b.bit))
-    case b: FixedRangeValue => Some(Encoding(b.value << b.lsb, Range(b.lsb, b.msb).map(1 << _).sum))
+    case b: BitValue => Some(Encoding(b.value << b.bit.toInt, BigInt(1) << b.bit.toInt))
+    case b: FixedRangeValue =>
+      Some(Encoding(b.value << b.lsb.toInt, Range(b.lsb.toInt, b.msb.toInt).map(BigInt(1) << _).sum))
     case _ => None
   }.reduce((l, r) => l.merge(r))
 

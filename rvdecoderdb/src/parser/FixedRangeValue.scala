@@ -11,9 +11,9 @@ object FixedRangeValue {
           msb.toInt,
           lsb.toInt,
           value match {
-            case s"0b$bstr" => BigInt(bstr, 2).toInt
-            case s"0x$xstr" => BigInt(xstr, 16).toInt
-            case dstr       => dstr.toInt
+            case s"0b$bstr" => BigInt(bstr, 2)
+            case s"0x$xstr" => BigInt(xstr, 16)
+            case dstr       => BigInt(dstr)
           }
         )
       )
@@ -21,6 +21,6 @@ object FixedRangeValue {
   }
 }
 
-class FixedRangeValue(val msb: Int, val lsb: Int, val value: Int) extends Token {
+class FixedRangeValue(val msb: BigInt, val lsb: BigInt, val value: BigInt) extends Token {
   override def toString: String = s"$msb..$lsb=$value"
 }

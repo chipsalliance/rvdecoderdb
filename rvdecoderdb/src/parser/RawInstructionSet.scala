@@ -3,4 +3,4 @@
 
 package org.chipsalliance.rvdecoderdb.parser
 
-case class RawInstructionSet(name: String, ratified: Boolean, rawInstructions: Seq[RawInstruction])
+case class RawInstructionSet(name: String, ratified: Boolean, custom: Boolean, rawInstructions: Seq[RawInstruction])

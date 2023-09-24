@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2023 Jiuyang Liu <liu@jiuyang.me>
+
 package org.chipsalliance.rvdecoderdb
 
 /** Like chisel3.BitPat, this is a 32-bits field stores the Instruction encoding. */
-case class Encoding(value: Int, mask: Int) {
+case class Encoding(value: BigInt, mask: BigInt) {
   def merge(that: Encoding) = new Encoding(value + that.value, mask + that.mask)
   override def toString =
-    Seq.tabulate(32)(i => if (!BigInt(mask).testBit(i)) "?" else if (BigInt(value).testBit(i)) "1" else "0").mkString
+    Seq.tabulate(32)(i => if (!mask.testBit(i)) "?" else if (value.testBit(i)) "1" else "0").mkString
 }
 
 /** represent an riscv sub instruction set, aka a file in riscv-opcodes. */
@@ -24,4 +25,33 @@ case class Instruction(
   encoding:        Encoding,
   instructionSets: Seq[InstructionSet],
   pseudoFrom:      Option[Instruction],
-  ratified:        Boolean)
+  ratified:        Boolean,
+  custom:          Boolean) {
+  require(!custom || (custom && !ratified), "All custom instructions are unratified.")
+  override def toString: String =
+    Option.when(custom)("[CUSTOM]").getOrElse(Option.when(!ratified)("[UNRATIFIED]").getOrElse("")).padTo(16, ' ') +
+      pseudoFrom.map(p => s"[pseudo ${p.name}]").getOrElse("").padTo(32, ' ') +
+      name.padTo(24, ' ') +
+      encoding.toString.padTo(48, ' ') +
+      s"in {${instructionSets.map(_.name).mkString(", ")}}"
+}
+
+object Instruction {
+  /** Parse instructions from riscv/riscv-opcodes */
+  def parse(riscvOpcodes: os.Path, custom: Iterable[os.Path] = Seq.empty): Iterable[Instruction] = {
+    require(os.isDir(riscvOpcodes), "riscvOpcodes should be a folder clone from git@github.com:riscv/riscv-opcodes")
+    parser.parse(
+      os
+        .walk(riscvOpcodes)
+        .filter(f =>
+          f.baseName.startsWith("rv128_") ||
+            f.baseName.startsWith("rv64_") ||
+            f.baseName.startsWith("rv32_") ||
+            f.baseName.startsWith("rv_")
+        )
+        .filter(os.isFile)
+        .map(f => (f, !f.segments.contains("unratified"), false)) ++
+        custom.map(f => (f, false, true))
+    )
+  }
+}
