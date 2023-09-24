@@ -140,6 +140,17 @@ case class Instruction(
     Option.when(custom)("[CUSTOM]").getOrElse(Option.when(!ratified)("[UNRATIFIED]").getOrElse("")).padTo(16, ' ') +
       pseudoFrom.map(p => s"[pseudo ${p.name}]").getOrElse("").padTo(24, ' ') +
       name.padTo(24, ' ') +
+      s"[${
+        Seq(
+          Option.when(Utils.isR(this))("R "),
+          Option.when(Utils.isR4(this))("R4"),
+          Option.when(Utils.isI(this))("I "),
+          Option.when(Utils.isS(this))("S "),
+          Option.when(Utils.isB(this))("B "),
+          Option.when(Utils.isU(this))("U "),
+          Option.when(Utils.isJ(this))("J ")
+        ).flatten.headOption.getOrElse("  ")
+      }]".padTo(4, ' ') +
       args.mkString(",").padTo(40, ' ') +
       encoding.toString.padTo(48, ' ') +
       s"in {${instructionSets.map(_.name).mkString(", ")}}"
