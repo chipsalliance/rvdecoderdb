@@ -34,4 +34,6 @@ object Utils {
   def readRs1(instruction: Instruction): Boolean = instruction.args.map(_.name).contains("rs1")
 
   def readRs2(instruction: Instruction): Boolean = instruction.args.map(_.name).contains("rs2")
+
+  def writeRd(instruction: Instruction): Boolean = instruction.args.map(_.name).contains("rd")
 }
