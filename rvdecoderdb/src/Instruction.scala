@@ -136,9 +136,12 @@ case class Instruction(
   ratified:        Boolean,
   custom:          Boolean) {
   require(!custom || (custom && !ratified), "All custom instructions are unratified.")
+  def instructionSet: InstructionSet = instructionSets.head
+  def importTo: Seq[InstructionSet] = instructionSets.drop(1)
+  def simpleName = s"${instructionSet.name}::$name"
   override def toString: String =
-    instructionSets.head.name.padTo(16, ' ') +
-      name.padTo(36, ' ') +
+    instructionSet.name.padTo(16, ' ') +
+      s"$name${pseudoFrom.map(_.simpleName).map(s => s" [pseudo $s]").getOrElse("")}".padTo(48, ' ') +
       s"[${Seq(
         Option.when(Utils.isR(this))("R "),
         Option.when(Utils.isR4(this))("R4"),
@@ -152,8 +155,7 @@ case class Instruction(
       encoding.toString.padTo(48, ' ') +
       ("[" +
       Option.when(custom)("CUSTOM ").getOrElse(Option.when(!ratified)("UNRATIFIED ").getOrElse("")) +
-      pseudoFrom.map(p => s"${p.instructionSets.head.name}::${p.name}").map(s => s"pseudo from $s ").getOrElse("") +
-      (if (instructionSets.size > 1) Some(instructionSets.drop(1).map(_.name).mkString(",")) else None)
+      (if (importTo.nonEmpty) Some(importTo.map(_.name).mkString(",")) else None)
         .map(s => s"import to $s")
         .getOrElse("") +
       "]").replace(" ]", "]").replace("[]", "")
