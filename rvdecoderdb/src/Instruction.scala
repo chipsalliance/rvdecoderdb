@@ -155,23 +155,3 @@ case class Instruction(
       encoding.toString.padTo(48, ' ') +
       s"in {${instructionSets.map(_.name).mkString(", ")}}"
 }
-
-object Instruction {
-  /** Parse instructions from riscv/riscv-opcodes */
-  def parse(riscvOpcodes: os.Path, custom: Iterable[os.Path] = Seq.empty): Iterable[Instruction] = {
-    require(os.isDir(riscvOpcodes), "riscvOpcodes should be a folder clone from git@github.com:riscv/riscv-opcodes")
-    parser.parse(
-      os
-        .walk(riscvOpcodes)
-        .filter(f =>
-          f.baseName.startsWith("rv128_") ||
-            f.baseName.startsWith("rv64_") ||
-            f.baseName.startsWith("rv32_") ||
-            f.baseName.startsWith("rv_")
-        )
-        .filter(os.isFile)
-        .map(f => (f, !f.segments.contains("unratified"), false)) ++
-        custom.map(f => (f, false, true))
-    )
-  }
-}

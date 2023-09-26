@@ -3,8 +3,6 @@
 
 package org.chipsalliance.rvdecoderdb.test
 
-import org.chipsalliance.rvdecoderdb.Instruction
-
 object Test extends App {
-  Instruction.parse(os.pwd / "rvdecoderdbtest" / "riscv-opcodes").foreach(println)
+  org.chipsalliance.rvdecoderdb.fromFile(os.pwd / "rvdecoderdbtest" / "jvm"  / "riscv-opcodes").foreach(println)
 }

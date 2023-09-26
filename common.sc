@@ -3,17 +3,27 @@
 
 import mill._
 import mill.scalalib._
+import mill.scalajslib._
 
-trait RVDecoderDBModule extends ScalaModule {
+trait RVDecoderDBJVMModule extends ScalaModule {
+  override def allSources: T[Seq[PathRef]] = T(super.allSources() ++ Some(PathRef(millSourcePath / "jvm")))
   def osLibIvy: Dep
-
   override def ivyDeps = super.ivyDeps() ++ Some(osLibIvy)
 }
 
-trait RVDecoderDBTestModule extends ScalaModule {
-  def rvdecoderdbModule: RVDecoderDBModule
-  def pprintIvy: Dep
+trait RVDecoderDBJVMTestModule extends ScalaModule {
+  override def allSources: T[Seq[PathRef]] = T(super.allSources() ++ Some(PathRef(millSourcePath / "jvm")))
+  def dut: RVDecoderDBJVMModule
+  override def moduleDeps = super.moduleDeps ++ Some(dut)
+}
 
-  override def moduleDeps = super.moduleDeps ++ Some(rvdecoderdbModule)
-  override def ivyDeps = super.ivyDeps() ++ Some(pprintIvy)
+trait RVDecoderDBJSModule extends ScalaJSModule {
+  override def allSources: T[Seq[PathRef]] = T(super.allSources() ++ Some(PathRef(millSourcePath / "js")))
+  override def ivyDeps = super.ivyDeps()
+}
+
+trait RVDecoderDBTestJSModule extends ScalaJSModule {
+  override def allSources: T[Seq[PathRef]] = T(super.allSources() ++ Some(PathRef(millSourcePath / "js")))
+  def dut: RVDecoderDBJSModule
+  override def moduleDeps = super.moduleDeps ++ Some(dut)
 }

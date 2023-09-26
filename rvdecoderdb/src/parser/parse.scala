@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2023 Jiuyang Liu <liu@jiuyang.me>
 
-package org.chipsalliance.rvdecoderdb
+package org.chipsalliance.rvdecoderdb.parser
 
-package object parser {
-  def parse(opcodeFiles: Iterable[(os.Path, Boolean, Boolean)]): Iterable[Instruction] = {
-    val rawInstructionSets = opcodeFiles.map {
-      case (f, ratified, custom) =>
+import org.chipsalliance.rvdecoderdb.{Instruction, InstructionSet, Arg}
+
+object parse {
+  def apply(opcodeFiles: Iterable[(String, String, Boolean, Boolean)]): Iterable[Instruction] = {
+    val rawInstructionSets: Iterable[RawInstructionSet] = opcodeFiles.map {
+      case (instructionSet, content, ratified, custom) =>
         RawInstructionSet(
-          f.baseName,
+          instructionSet,
           ratified,
           custom,
-          os.read
-            .lines(f)
+          content
+            .split("\n")
             .filter(!_.startsWith("#"))
             .filter(_.nonEmpty)
             .map(
@@ -104,7 +106,8 @@ package object parser {
         pseudoArgsMap(instr).map(a => Arg(a.name)).sortBy(_.lsb),
         Seq(InstructionSet(instr._1)).sortBy(_.name),
         Some(
-          instructions.find(_.name == pseudoFromMap(instr))
+          instructions
+            .find(_.name == pseudoFromMap(instr))
             .getOrElse(throw new Exception("pseudo not found"))
         ),
         pseudoRatifiedMap(instr),
