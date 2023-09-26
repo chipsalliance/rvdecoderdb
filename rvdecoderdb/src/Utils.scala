@@ -20,8 +20,13 @@ object Utils {
 
   // some general helper to sort instruction out
   def isFP(instruction: Instruction): Boolean = Seq(
-    "rv_d", "rv_f", "rv_q",
-    "rv64_zfh", "rv_d_zfh", "rv_q_zfh", "rv_zfh",
+    "rv_d",
+    "rv_f",
+    "rv_q",
+    "rv64_zfh",
+    "rv_d_zfh",
+    "rv_q_zfh",
+    "rv_zfh",
     // unratified
     "rv_zfh_zfa"
   ).exists(instruction.instructionSets.map(_.name).contains)

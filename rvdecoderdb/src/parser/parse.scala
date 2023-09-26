@@ -3,7 +3,7 @@
 
 package org.chipsalliance.rvdecoderdb.parser
 
-import org.chipsalliance.rvdecoderdb.{Instruction, InstructionSet, Arg}
+import org.chipsalliance.rvdecoderdb.{Arg, Instruction, InstructionSet}
 
 object parse {
   def apply(opcodeFiles: Iterable[(String, String, Boolean, Boolean)]): Iterable[Instruction] = {
@@ -91,8 +91,7 @@ object parse {
       Instruction(
         instr,
         encodingMap(instr),
-        argsMap(instr).map(a => Arg(a.name)).sortBy(_.lsb),
-        {
+        argsMap(instr).map(a => Arg(a.name)).sortBy(_.lsb), {
           val sets = instructionSetsMap(instr).map(InstructionSet.apply)
           sets.head +: sets.tail.sortBy(_.name)
         },
