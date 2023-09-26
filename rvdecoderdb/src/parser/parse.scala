@@ -92,7 +92,10 @@ object parse {
         instr,
         encodingMap(instr),
         argsMap(instr).map(a => Arg(a.name)).sortBy(_.lsb),
-        instructionSetsMap(instr).map(InstructionSet.apply).sortBy(_.name),
+        {
+          val sets = instructionSetsMap(instr).map(InstructionSet.apply)
+          sets.head +: sets.tail.sortBy(_.name)
+        },
         None,
         ratifiedMap(instr),
         customMap(instr)
@@ -115,6 +118,27 @@ object parse {
       )
     )
 
-    (instructions ++ pseudoInstructions).toSeq.sortBy(_.instructionSets.head.name)
+    (instructions ++ pseudoInstructions).toSeq
+      // sort instructions by default
+      .sortBy(s =>
+        (
+          // sort by ratified, custom, unratified
+          (s.ratified, s.custom) match {
+            case (true, false)  => 0
+            case (false, true)  => 1
+            case (false, false) => 2
+            case (true, true)   => throw new Exception("unreachable")
+          },
+          // sort by removing rv_, rv32_, rv64_, rv128_
+          s.instructionSets.head.name.split("_").tail.mkString("_"),
+          // sort by rv_, rv32_, rv64_, rv128_
+          s.instructionSets.head.name.split("_").head match {
+            case "rv"    => 0
+            case "rv64"  => 64
+            case "rv32"  => 32
+            case "rv128" => 128
+          }
+        )
+      )
   }
 }

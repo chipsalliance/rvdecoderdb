@@ -137,21 +137,24 @@ case class Instruction(
   custom:          Boolean) {
   require(!custom || (custom && !ratified), "All custom instructions are unratified.")
   override def toString: String =
-    Option.when(custom)("[CUSTOM]").getOrElse(Option.when(!ratified)("[UNRATIFIED]").getOrElse("")).padTo(16, ' ') +
-      pseudoFrom.map(p => s"[pseudo ${p.name}]").getOrElse("").padTo(24, ' ') +
-      name.padTo(24, ' ') +
-      s"[${
-        Seq(
-          Option.when(Utils.isR(this))("R "),
-          Option.when(Utils.isR4(this))("R4"),
-          Option.when(Utils.isI(this))("I "),
-          Option.when(Utils.isS(this))("S "),
-          Option.when(Utils.isB(this))("B "),
-          Option.when(Utils.isU(this))("U "),
-          Option.when(Utils.isJ(this))("J ")
-        ).flatten.headOption.getOrElse("  ")
-      }]".padTo(4, ' ') +
+    instructionSets.head.name.padTo(16, ' ') +
+      name.padTo(36, ' ') +
+      s"[${Seq(
+        Option.when(Utils.isR(this))("R "),
+        Option.when(Utils.isR4(this))("R4"),
+        Option.when(Utils.isI(this))("I "),
+        Option.when(Utils.isS(this))("S "),
+        Option.when(Utils.isB(this))("B "),
+        Option.when(Utils.isU(this))("U "),
+        Option.when(Utils.isJ(this))("J ")
+      ).flatten.headOption.getOrElse("  ")}]".padTo(4, ' ') +
       args.mkString(",").padTo(40, ' ') +
       encoding.toString.padTo(48, ' ') +
-      s"in {${instructionSets.map(_.name).mkString(", ")}}"
+      ("[" +
+      Option.when(custom)("CUSTOM ").getOrElse(Option.when(!ratified)("UNRATIFIED ").getOrElse("")) +
+      pseudoFrom.map(p => s"${p.instructionSets.head.name}::${p.name}").map(s => s"pseudo from $s ").getOrElse("") +
+      (if (instructionSets.size > 1) Some(instructionSets.drop(1).map(_.name).mkString(",")) else None)
+        .map(s => s"import to $s")
+        .getOrElse("") +
+      "]").replace(" ]", "]").replace("[]", "")
 }
