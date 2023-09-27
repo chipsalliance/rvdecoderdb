@@ -9,7 +9,8 @@ object fromFile {
   /** Parse instructions from riscv/riscv-opcodes */
   def apply(riscvOpcodes: os.Path, custom: Iterable[os.Path] = Seq.empty): Iterable[Instruction] = {
     require(os.isDir(riscvOpcodes), "riscvOpcodes should be a folder clone from git@github.com:riscv/riscv-opcodes")
-    parser.parse(os
+    parser.parse(
+      (os
       .walk(riscvOpcodes)
       .filter(f =>
         f.baseName.startsWith("rv128_") ||
@@ -20,7 +21,9 @@ object fromFile {
       .filter(os.isFile)
       .map(f => (f.baseName, os.read(f), !f.segments.contains("unratified"), false)) ++
       custom
-        .map(f => (f.baseName, os.read(f), false, true)))
+        .map(f => (f.baseName, os.read(f), false, true))), 
+      os.read(riscvOpcodes / "arg_lut.csv")
+      )
   }
 }
 

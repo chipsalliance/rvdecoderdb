@@ -6,7 +6,17 @@ package org.chipsalliance.rvdecoderdb.parser
 import org.chipsalliance.rvdecoderdb.{Arg, Instruction, InstructionSet}
 
 object parse {
-  def apply(opcodeFiles: Iterable[(String, String, Boolean, Boolean)]): Iterable[Instruction] = {
+  def apply(opcodeFiles: Iterable[(String, String, Boolean, Boolean)], argCsv: String): Iterable[Instruction] = {
+    val argLut: Map[String, (Int, Int)] = argCsv
+      .split("\n")
+      .map { str =>
+        val l = str
+          .replace(" ", "")
+          .replace("\"", "")
+          .split(",")
+        (l(0) -> (l(1).toInt, l(2).toInt))
+      }
+      .toMap
     val rawInstructionSets: Iterable[RawInstructionSet] = opcodeFiles.map {
       case (instructionSet, content, ratified, custom) =>
         RawInstructionSet(
@@ -59,14 +69,14 @@ object parse {
           ratifiedMap.update(rawInst.name, set.ratified)
           customMap.update(rawInst.name, set.custom)
           encodingMap.update(rawInst.name, rawInst.encoding)
-          argsMap.update(rawInst.name, rawInst.args.map(al => Arg(al.name)))
+          argsMap.update(rawInst.name, rawInst.args.map(al => Arg(al.name, argLut(al.name)._1, argLut(al.name)._2)))
         case rawInst: RawInstruction if rawInst.pseudoInstruction.isDefined =>
           val k = (set.name, rawInst.name)
           pseudoFromMap.update(k, rawInst.pseudoInstruction.get._2)
           pseudoRatifiedMap.update(k, set.ratified)
           pseudoCustomMap.update(k, set.custom)
           pseudoEncodingMap.update(k, rawInst.encoding)
-          pseudoArgsMap.update(k, rawInst.args.map(al => Arg(al.name)))
+          pseudoArgsMap.update(k, rawInst.args.map(al => Arg(al.name, argLut(al.name)._1, argLut(al.name)._2)))
         case _ =>
       }
     }
@@ -91,7 +101,7 @@ object parse {
       Instruction(
         instr,
         encodingMap(instr),
-        argsMap(instr).map(a => Arg(a.name)).sortBy(_.lsb), {
+        argsMap(instr).sortBy(_.lsb), {
           val sets = instructionSetsMap(instr).map(InstructionSet.apply)
           sets.head +: sets.tail.sortBy(_.name)
         },
@@ -105,7 +115,7 @@ object parse {
       Instruction(
         instr._2,
         pseudoEncodingMap(instr),
-        pseudoArgsMap(instr).map(a => Arg(a.name)).sortBy(_.lsb),
+        pseudoArgsMap(instr).sortBy(_.lsb),
         Seq(InstructionSet(instr._1)).sortBy(_.name),
         Some(
           instructions
