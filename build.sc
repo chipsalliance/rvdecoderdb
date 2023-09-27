@@ -11,8 +11,10 @@ object v {
   val scalajs = "1.14.0"
   object jvm {
     val oslib = ivy"com.lihaoyi::os-lib:0.9.1"
+    val upickle = ivy"com.lihaoyi::upickle:3.1.3"
   }
   object js {
+    val upickle = ivy"com.lihaoyi::upickle::3.1.3"
   }
 }
 
@@ -21,12 +23,14 @@ trait RVDecoderDBJVMModule extends common.RVDecoderDBJVMModule with ScalafmtModu
   override def allSources: T[Seq[PathRef]] = T(super.allSources() ++ Some(PathRef(millSourcePath / "jvm")))
   def scalaVersion = T(v.scala)
   def osLibIvy = v.jvm.oslib
+  def upickleIvy= v.jvm.upickle
 }
 
 trait RVDecoderDBJSModule extends common.RVDecoderDBJSModule with ScalafmtModule {
   override def millSourcePath: os.Path = os.pwd / "rvdecoderdb"
   def scalaVersion = T(v.scala)
   def scalaJSVersion = T(v.scalajs)
+  def upickleIvy = v.js.upickle
 }
 
 object rvdecoderdb extends Module { m =>

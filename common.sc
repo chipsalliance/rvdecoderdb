@@ -8,7 +8,8 @@ import mill.scalajslib._
 trait RVDecoderDBJVMModule extends ScalaModule {
   override def allSources: T[Seq[PathRef]] = T(super.allSources() ++ Some(PathRef(millSourcePath / "jvm")))
   def osLibIvy: Dep
-  override def ivyDeps = super.ivyDeps() ++ Some(osLibIvy)
+  def upickleIvy: Dep
+  override def ivyDeps = super.ivyDeps() ++ Some(osLibIvy) ++ Some(upickleIvy)
 }
 
 trait RVDecoderDBJVMTestModule extends ScalaModule {
@@ -19,7 +20,8 @@ trait RVDecoderDBJVMTestModule extends ScalaModule {
 
 trait RVDecoderDBJSModule extends ScalaJSModule {
   override def allSources: T[Seq[PathRef]] = T(super.allSources() ++ Some(PathRef(millSourcePath / "js")))
-  override def ivyDeps = super.ivyDeps()
+  def upickleIvy: Dep
+  override def ivyDeps = super.ivyDeps() ++ Some(upickleIvy)
 }
 
 trait RVDecoderDBTestJSModule extends ScalaJSModule {

@@ -3,6 +3,12 @@
 
 package org.chipsalliance.rvdecoderdb
 
+import upickle.default.{ReadWriter => RW, macroRW}
+
+object Encoding {
+  implicit val rw: RW[Encoding] = macroRW
+}
+
 /** Like chisel3.BitPat, this is a 32-bits field stores the Instruction encoding. */
 case class Encoding(value: BigInt, mask: BigInt) {
   def merge(that: Encoding) = new Encoding(value + that.value, mask + that.mask)
@@ -10,12 +16,23 @@ case class Encoding(value: BigInt, mask: BigInt) {
     Seq.tabulate(32)(i => if (!mask.testBit(i)) "?" else if (value.testBit(i)) "1" else "0").mkString
 }
 
+object Arg {
+  implicit val rw: RW[Arg] = macroRW
+}
 case class Arg(name: String, msb: Int, lsb: Int) {
   override def toString: String = name
 }
 
+object InstructionSet {
+  implicit val rw: RW[InstructionSet] = macroRW
+}
+
 /** represent an riscv sub instruction set, aka a file in riscv-opcodes. */
 case class InstructionSet(name: String)
+
+object Instruction {
+  implicit val rw: RW[Instruction] = macroRW
+}
 
 /** All information can be parsed from riscv/riscv-opcode.
   * @param name name of this instruction
