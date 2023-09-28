@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2023 Jiuyang Liu <liu@jiuyang.me>
 
 object printall extends App {
-  org.chipsalliance.rvdecoderdb.fromFile(os.pwd / "rvdecoderdbtest" / "jvm"  / "riscv-opcodes").foreach(println)
+  org.chipsalliance.rvdecoderdb.fromFile.instructions(os.pwd / "rvdecoderdbtest" / "jvm"  / "riscv-opcodes").foreach(println)
 }
 
 object json extends App {
-  org.chipsalliance.rvdecoderdb.fromFile(os.pwd / "rvdecoderdbtest" / "jvm"  / "riscv-opcodes").foreach(i => println(upickle.default.write(i)))
+  org.chipsalliance.rvdecoderdb.fromFile.instructions(os.pwd / "rvdecoderdbtest" / "jvm"  / "riscv-opcodes").foreach(i => println(upickle.default.write(i)))
 }
