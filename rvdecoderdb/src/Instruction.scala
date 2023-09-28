@@ -57,11 +57,12 @@ object Instruction {
 }
 
 /** All information can be parsed from riscv/riscv-opcode.
-  * @param name name of this instruction
-  * @param encoding encoding of this instruction
+  *
+  * @param name            name of this instruction
+  * @param encoding        encoding of this instruction
   * @param instructionSets base instruction set that this instruction lives in
-  * @param pseudoFrom if this is defined, means this instruction is an Pseudo Instruction from another instruction
-  * @param ratified true if this instruction is ratified
+  * @param pseudoFrom      if this is defined, means this instruction is an Pseudo Instruction from another instruction
+  * @param ratified        true if this instruction is ratified
   */
 case class Instruction(
   name:            String,
@@ -72,9 +73,13 @@ case class Instruction(
   ratified:        Boolean,
   custom:          Boolean) {
   require(!custom || (custom && !ratified), "All custom instructions are unratified.")
+
   def instructionSet: InstructionSet = instructionSets.head
-  def importTo:       Seq[InstructionSet] = instructionSets.drop(1)
+
+  def importTo: Seq[InstructionSet] = instructionSets.drop(1)
+
   def simpleName = s"${instructionSet.name}::$name"
+
   override def toString: String =
     instructionSet.name.padTo(16, ' ') +
       s"$name${pseudoFrom.map(_.simpleName).map(s => s" [pseudo $s]").getOrElse("")}".padTo(48, ' ') +
