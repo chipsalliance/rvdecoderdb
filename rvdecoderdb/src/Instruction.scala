@@ -7,18 +7,40 @@ import upickle.default.{ReadWriter => RW, macroRW}
 
 object Encoding {
   implicit val rw: RW[Encoding] = macroRW
+
+  def fromString(str: String): Encoding = {
+    require(str.length == 32)
+    Encoding(
+      str.zipWithIndex.map {
+        case (c, i) =>
+          c match {
+            case '1' => BigInt(1) << i
+            case '0' => BigInt(0)
+            case '?' => BigInt(0)
+          }
+      }.sum,
+      str.zipWithIndex.map {
+        case (c, i) =>
+          c match {
+            case '1' => BigInt(0)
+            case '0' => BigInt(0)
+            case '?' => BigInt(1) << i
+          }
+      }.sum
+    )
+  }
 }
 
 /** Like chisel3.BitPat, this is a 32-bits field stores the Instruction encoding. */
 case class Encoding(value: BigInt, mask: BigInt) {
-  def merge(that: Encoding) = new Encoding(value + that.value, mask + that.mask)
   override def toString =
-    Seq.tabulate(32)(i => if (!mask.testBit(i)) "?" else if (value.testBit(i)) "1" else "0").mkString
+    Seq.tabulate(32)(i => if (!mask.testBit(i)) "?" else if (value.testBit(i)) "1" else "0").reverse.mkString
 }
 
 object Arg {
   implicit val rw: RW[Arg] = macroRW
 }
+
 case class Arg(name: String, msb: Int, lsb: Int) {
   override def toString: String = name
 }
