@@ -11,7 +11,7 @@ object Encoding {
   def fromString(str: String): Encoding = {
     require(str.length == 32)
     Encoding(
-      str.zipWithIndex.map {
+      str.reverse.zipWithIndex.map {
         case (c, i) =>
           c match {
             case '1' => BigInt(1) << i
@@ -19,12 +19,12 @@ object Encoding {
             case '?' => BigInt(0)
           }
       }.sum,
-      str.zipWithIndex.map {
+      str.reverse.zipWithIndex.map {
         case (c, i) =>
           c match {
-            case '1' => BigInt(0)
-            case '0' => BigInt(0)
-            case '?' => BigInt(1) << i
+            case '1' => BigInt(1) << i
+            case '0' => BigInt(1) << i
+            case '?' => BigInt(0)
           }
       }.sum
     )
