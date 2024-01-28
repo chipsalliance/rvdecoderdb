@@ -6,7 +6,10 @@ package org.chipsalliance.rvdecoderdb.parser
 import org.chipsalliance.rvdecoderdb.{Arg, Instruction, InstructionSet}
 
 object parse {
-  def apply(opcodeFiles: Iterable[(String, String, Boolean, Boolean)], argLut: Map[String, (Int, Int)]): Iterable[Instruction] = {
+  def apply(
+    opcodeFiles: Iterable[(String, String, Boolean, Boolean)],
+    argLut:      Map[String, (Int, Int)]
+  ): Iterable[Instruction] = {
     val rawInstructionSets: Iterable[RawInstructionSet] = opcodeFiles.map {
       case (instructionSet, content, ratified, custom) =>
         RawInstructionSet(

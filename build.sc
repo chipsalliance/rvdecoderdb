@@ -41,6 +41,7 @@ object rvdecoderdb extends Module { m =>
 trait RVDecoderDBJVMTestModule extends common.RVDecoderDBJVMTestModule with ScalafmtModule {
   override def millSourcePath = os.pwd / "rvdecoderdbtest"
   def dut = rvdecoderdb.jvm
+  def riscvOpcodesPath: T[Option[PathRef]] = T.input(Some(PathRef(millSourcePath / "jvm" / "riscv-opcodes")))
   def scalaVersion = T(v.scala)
 }
 
