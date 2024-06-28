@@ -28,7 +28,7 @@ package object rvdecoderdb {
     .split("\n")
     .map { str =>
       val l = str
-        .replace(" ", "")
+        .replace(", ", ",")
         .replace("\"", "")
         .split(",")
       l(0) -> Arg(l(0), l(1).toInt, l(2).toInt)
@@ -40,7 +40,7 @@ package object rvdecoderdb {
     .split("\n")
     .map { str =>
       val l = str
-        .replace(" ", "")
+        .replace(", ", ",")
         .replace("\"", "")
         .split(",")
       l(1) -> java.lang.Long.decode(l(0)).toInt
