@@ -11,10 +11,10 @@ object v {
   val scalajs = "1.14.0"
   object jvm {
     val oslib = ivy"com.lihaoyi::os-lib:0.9.1"
-    val upickle = ivy"com.lihaoyi::upickle:3.1.3"
+    val upickle = ivy"com.lihaoyi::upickle:3.3.1"
   }
   object js {
-    val upickle = ivy"com.lihaoyi::upickle::3.1.3"
+    val upickle = ivy"com.lihaoyi::upickle::3.3.1"
   }
 }
 
