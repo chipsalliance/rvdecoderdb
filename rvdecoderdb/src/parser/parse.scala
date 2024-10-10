@@ -18,6 +18,7 @@ object parse {
           custom,
           content
             .split("\n")
+            .map(_.trim)
             .filter(!_.startsWith("#"))
             .filter(_.nonEmpty)
             .map(
@@ -27,6 +28,7 @@ object parse {
                   case "$import"          => Import
                   case "$pseudo_op"       => PseudoOp
                   case RefInst(i)         => i
+                  case SameValue(s)       => s
                   case FixedRangeValue(f) => f
                   case BitValue(b)        => b
                   case ArgLUT(a)          => a
