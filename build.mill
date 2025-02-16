@@ -59,8 +59,17 @@ trait RVDecoderDBJSTestModule extends common.RVDecoderDBTestJSModule with Scalaf
   def scalaJSVersion = T(v.scalajs)
 }
 
-
 object rvdecoderdbtest extends Module { m =>
   object jvm extends RVDecoderDBJVMTestModule
   object js extends RVDecoderDBJSTestModule
+}
+
+trait SailCodeGenJVMModule extends common.SailCodeGenJVMModule with ScalafmtModule {
+  def dut = rvdecoderdb.jvm
+  def riscvOpcodesPath: T[Option[PathRef]] = T.input(Some(PathRef(millSourcePath / "riscv-opcodes")))
+  def scalaVersion = T(v.scala)
+}
+
+object sailcodegen extends Module { m =>
+  object jvm extends SailCodeGenJVMModule
 }

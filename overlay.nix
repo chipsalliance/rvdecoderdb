@@ -16,4 +16,6 @@ final: prev: {
   espresso = final.callPackage ./nix/espresso.nix { };
 
   rvdecoderdb-jvm = final.callPackage ./nix/rvdecoderdb-jvm.nix { };
+
+  sail = final.callPackage ./nix/sailcodegen.nix { };
 }

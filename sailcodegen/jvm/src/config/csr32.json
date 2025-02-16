@@ -1,0 +1,438 @@
+[
+  {
+    "csrname": "mie",
+    "number": "0x304",
+    "width": "32",
+    "subordinateTo": "NONE",
+    "bitfields": [
+      {
+        "bfname": "MEIE",
+        "bfpos": "11"
+      },
+      {
+        "bfname": "SEIE",
+        "bfpos": "9"
+      },
+      {
+        "bfname": "MTIE",
+        "bfpos": "7"
+      },
+      {
+        "bfname": "STIE",
+        "bfpos": "5"
+      },
+      {
+        "bfname": "MSIE",
+        "bfpos": "3"
+      },
+      {
+        "bfname": "SSIE",
+        "bfpos": "1"
+      }
+    ]
+  },
+  {
+    "csrname": "mip",
+    "number": "0x344",
+    "width": "32",
+    "subordinateTo": "NONE",
+    "bitfields": [
+      {
+        "bfname": "MEIP",
+        "bfpos": "11"
+      },
+      {
+        "bfname": "SEIP",
+        "bfpos": "9"
+      },
+      {
+        "bfname": "MTIP",
+        "bfpos": "7"
+      },
+      {
+        "bfname": "STIP",
+        "bfpos": "5"
+      },
+      {
+        "bfname": "MSIP",
+        "bfpos": "3"
+      },
+      {
+        "bfname": "SSIP",
+        "bfpos": "1"
+      }
+    ]
+  },
+  {
+    "csrname": "mideleg",
+    "number": "0x303",
+    "width": "32",
+    "subordinateTo": "NONE",
+    "bitfields": [
+      {
+        "bfname": "MEID",
+        "bfpos": "11"
+      },
+      {
+        "bfname": "SEID",
+        "bfpos": "9"
+      },
+      {
+        "bfname": "MTID",
+        "bfpos": "7"
+      },
+      {
+        "bfname": "STID",
+        "bfpos": "5"
+      },
+      {
+        "bfname": "MSID",
+        "bfpos": "3"
+      },
+      {
+        "bfname": "SSID",
+        "bfpos": "1"
+      }
+    ]
+  },
+  {
+    "csrname": "mstatus",
+    "number": "0x300",
+    "width": "32",
+    "subordinateTo": "NONE",
+    "bitfields": [
+      {
+        "bfname": "SD",
+        "bfpos": "32 - 1"
+      },
+      {
+        "bfname": "TSR",
+        "bfpos": "22"
+      },
+      {
+        "bfname": "TW",
+        "bfpos": "21"
+      },
+      {
+        "bfname": "TVM",
+        "bfpos": "20"
+      },
+      {
+        "bfname": "MXR",
+        "bfpos": "19"
+      },
+      {
+        "bfname": "SUM",
+        "bfpos": "18"
+      },
+      {
+        "bfname": "MPRV",
+        "bfpos": "17"
+      },
+      {
+        "bfname": "XS",
+        "bfpos": "16..15"
+      },
+      {
+        "bfname": "FS",
+        "bfpos": "14..13"
+      },
+      {
+        "bfname": "MPP",
+        "bfpos": "12..11"
+      },
+      {
+        "bfname": "VS",
+        "bfpos": "10..9"
+      },
+      {
+        "bfname": "SPP",
+        "bfpos": "8"
+      },
+      {
+        "bfname": "MPIE",
+        "bfpos": "7"
+      },
+      {
+        "bfname": "SPIE",
+        "bfpos": "5"
+      },
+      {
+        "bfname": "MIE",
+        "bfpos": "3"
+      },
+      {
+        "bfname": "SIE",
+        "bfpos": "1"
+      }
+    ]
+  },
+  {
+    "csrname": "mtvec",
+    "number": "0x305",
+    "width": "32",
+    "subordinateTo": "NONE",
+    "bitfields": [
+      {
+        "bfname": "Base",
+        "bfpos": "32 - 1..2"
+      },
+      {
+        "bfname": "Mode",
+        "bfpos": "1..0"
+      }
+    ]
+  },
+  {
+    "csrname": "mcause",
+    "number": "0x342",
+    "width": "32",
+    "subordinateTo": "NONE",
+    "bitfields": [
+      {
+        "bfname": "IsInterrupt",
+        "bfpos": "32 - 1"
+      },
+      {
+        "bfname": "Cause",
+        "bfpos": "32 - 2..0"
+      }
+    ]
+  },
+  {
+    "csrname": "menvcfg",
+    "number": "0x30a",
+    "width": "64",
+    "subordinateTo": "NONE",
+    "bitfields": [
+      {
+        "bfname": "STCE",
+        "bfpos": "63"
+      },
+      {
+        "bfname": "PBMTE",
+        "bfpos": "62"
+      },
+      {
+        "bfname": "ADUE",
+        "bfpos": "61"
+      },
+      {
+        "bfname": "CDE",
+        "bfpos": "60"
+      },
+      {
+        "bfname": "PMM",
+        "bfpos": "33..32"
+      },
+      {
+        "bfname": "CBZE",
+        "bfpos": "7"
+      },
+      {
+        "bfname": "CBCFE",
+        "bfpos": "6"
+      },
+      {
+        "bfname": "CBIE",
+        "bfpos": "5..4"
+      },
+      {
+        "bfname": "FIOM",
+        "bfpos": "0"
+      }
+    ]
+  },
+  {
+    "csrname": "senvcfg",
+    "number": "0x10a",
+    "width": "32",
+    "subordinateTo": "NONE",
+    "bitfields": [
+      {
+        "bfname": "PMM",
+        "bfpos": "33..32"
+      },
+      {
+        "bfname": "CBZE",
+        "bfpos": "7"
+      },
+      {
+        "bfname": "CBCFE",
+        "bfpos": "6"
+      },
+      {
+        "bfname": "CBIE",
+        "bfpos": "5..4"
+      },
+      {
+        "bfname": "FIOM",
+        "bfpos": "0"
+      }
+    ]
+  },
+  {
+    "csrname": "satp",
+    "number": "0x180",
+    "width": "32",
+    "subordinateTo": "NONE",
+    "bitfields": [
+      {
+        "bfname": "MODE",
+        "bfpos": "31"
+      },
+      {
+        "bfname": "ASID",
+        "bfpos": "30..22"
+      },
+      {
+        "bfname": "PPN",
+        "bfpos": "21..0"
+      }
+    ]
+  },
+  {
+    "csrname": "misa",
+    "number": "0x301",
+    "width": "32",
+    "subordinateTo": "NONE",
+    "bitfields": [
+      {
+        "bfname": "MXL",
+        "bfpos": "(32 - 1)..(32 - 2)"
+      },
+      {
+        "bfname": "Z",
+        "bfpos": "25"
+      },
+      {
+        "bfname": "Y",
+        "bfpos": "24"
+      },
+      {
+        "bfname": "X",
+        "bfpos": "23"
+      },
+      {
+        "bfname": "W",
+        "bfpos": "22"
+      },
+      {
+        "bfname": "V",
+        "bfpos": "21"
+      },
+      {
+        "bfname": "U",
+        "bfpos": "20"
+      },
+      {
+        "bfname": "T",
+        "bfpos": "19"
+      },
+      {
+        "bfname": "S",
+        "bfpos": "18"
+      },
+      {
+        "bfname": "R",
+        "bfpos": "17"
+      },
+      {
+        "bfname":"C",
+        "bfpos": "2"
+      }
+    ]
+  },
+  {
+    "csrname": "mtval",
+    "number": "0x343",
+    "width": "32",
+    "subordinateTo": "NONE",
+    "bitfields": [
+      {
+        "bfname": "mtval",
+        "bfpos": "32 - 1..0"
+      }
+    ]
+  },
+  {
+    "csrname": "mepc",
+    "number": "0x341",
+    "width": "32",
+    "subordinateTo": "NONE",
+    "bitfields": [
+      {
+        "bfname": "mepc",
+        "bfpos": "32 - 1..0"
+      }
+    ]
+  },
+  {
+    "csrname": "stvec",
+    "number": "0x105",
+    "width": "32",
+    "subordinateTo": "NONE",
+    "bitfields": [
+      {
+        "bfname": "Base",
+        "bfpos": "32 - 1..2"
+      },
+      {
+        "bfname": "Mode",
+        "bfpos": "1..0"
+      }
+    ]
+  },
+  {
+    "csrname": "sepc",
+    "number": "0x141",
+    "width": "32",
+    "subordinateTo": "NONE",
+    "bitfields": [
+      {
+        "bfname": "sepc",
+        "bfpos": "32 - 1..0"
+      }
+    ]
+  },
+  {
+    "csrname": "scause",
+    "number": "0x142",
+    "width": "32",
+    "subordinateTo": "NONE",
+    "bitfields": [
+      {
+        "bfname": "IsInterrupt",
+        "bfpos": "32 - 1"
+      },
+      {
+        "bfname": "Cause",
+        "bfpos": "32 - 2..0"
+      }
+    ]
+  },
+  {
+    "csrname": "stval",
+    "number": "0x143",
+    "width": "32",
+    "subordinateTo": "NONE",
+    "bitfields": [
+      {
+        "bfname": "stval",
+        "bfpos": "32 - 1..0"
+      }
+    ]
+  },
+  {
+    "csrname": "medeleg",
+    "number": "0x302",
+    "width": "32",
+    "subordinateTo": "NONE",
+    "bitfields": [
+      {
+        "bfname": "MEDELEG",
+        "bfpos": "32 - 1..0"
+      }
+    ]
+  }
+]

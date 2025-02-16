@@ -43,6 +43,12 @@ trait RVDecoderDBJVMTestModule extends HasRVDecoderDBResource with ScalaModule {
   override def moduleDeps = super.moduleDeps ++ Some(dut)
 }
 
+trait SailCodeGenJVMModule extends HasRVDecoderDBResource with ScalaModule {
+  override def sources: T[Seq[PathRef]] = T.sources { super.sources() ++ Some(PathRef(millSourcePath / "jvm" / "src"))  }
+  def dut: RVDecoderDBJVMModule
+  override def moduleDeps = super.moduleDeps ++ Some(dut)
+}
+
 trait RVDecoderDBJSModule extends ScalaJSModule {
   override def sources: T[Seq[PathRef]] = T.sources { super.sources() ++ Some(PathRef(millSourcePath / "js" / "src"))  }
   def upickleIvy: Dep
