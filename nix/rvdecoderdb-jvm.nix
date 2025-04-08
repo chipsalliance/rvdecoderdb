@@ -36,7 +36,7 @@ publishMillJar rec {
       mif run \
         --targets rvdecoderdb.jvm \
         -p "$sourceDir"/rvdecoderdb \
-        -o ./nix/rvdecoderdb-mill-lock.nix
+        -o ./nix/rvdecoderdb-jvm-mill-lock.nix
     '';
   };
 }

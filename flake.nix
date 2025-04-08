@@ -21,6 +21,7 @@
           commonDeps = with pkgs; [
             mill
             espresso
+            pkgs.mill-ivy-fetcher
           ];
 
         in
