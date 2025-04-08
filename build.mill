@@ -8,7 +8,7 @@ import mill.scalalib.scalafmt._
 
 object v {
   val scala = "2.13.16"
-  val scalajs = "1.14.0"
+  val scalajs = "1.18.2"
   object jvm {
     val oslib = ivy"com.lihaoyi::os-lib:0.9.1"
     val upickle = ivy"com.lihaoyi::upickle:3.3.1"
