@@ -32,14 +32,11 @@ publishMillJar rec {
       mill-ivy-fetcher
     ];
     text = ''
-      sourceDir=$(mktemp -d -t 'rvdecoderdb_src_XXX')
-      cp -rT ${src} "$sourceDir"/rvdecoderdb
-      chmod -R u+w "$sourceDir"
-
       mif run \
         --targets rvdecoderdb.jvm \
-        -p "$sourceDir"/rvdecoderdb \
-        -o ./nix/rvdecoderdb-jvm-mill-lock.nix
+        -p ${src} \
+        -o ./nix/rvdecoderdb-jvm-mill-lock.nix \
+        "$@"
     '';
   };
 }
