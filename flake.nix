@@ -2,37 +2,74 @@
   description = "rvdecoderdb";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
-    mill-ivy-fetcher = {
-      url = "github:Avimitin/mill-ivy-fetcher";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-utils.follows = "flake-utils";
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    flake-parts = {
+      url = "github:hercules-ci/flake-parts";
+      inputs.nixpkgs-lib.follows = "nixpkgs";
     };
+    treefmt-nix = {
+      url = "github:numtide/treefmt-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    # Don't follow mill-ivy-fetcher to this flake, it needs a pinned nixpkgs.
+    mill-ivy-fetcher.url = "github:Avimitin/mill-ivy-fetcher";
   };
-  outputs = { self, nixpkgs, mill-ivy-fetcher, flake-utils }@inputs:
+
+  outputs =
+    {
+      self,
+      nixpkgs,
+      mill-ivy-fetcher,
+      flake-parts,
+      treefmt-nix,
+      ...
+    }@inputs:
     let
       overlay = import ./overlay.nix;
     in
-    flake-utils.lib.eachDefaultSystem
-      (system:
-        let
-          pkgs = import nixpkgs { inherit system; overlays = [ mill-ivy-fetcher.overlays.default overlay ]; };
-          commonDeps = with pkgs; [
-            mill
-            espresso
-            pkgs.mill-ivy-fetcher
-          ];
+    flake-parts.lib.mkFlake { inherit inputs; } (_: {
+      systems = builtins.filter (
+        system: builtins.hasAttr system nixpkgs.legacyPackages
+      ) nixpkgs.lib.platforms.all;
 
+      flake = {
+        overlays.default = overlay;
+      };
+
+      imports = [
+        inputs.treefmt-nix.flakeModule
+      ];
+
+      perSystem =
+        { system, ... }:
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+            overlays = [
+              overlay
+              mill-ivy-fetcher.overlays.default
+            ];
+          };
         in
         {
+          _module.args.pkgs = pkgs;
+
           legacyPackages = pkgs;
+
           devShells = {
             default = pkgs.mkShell {
-              buildInputs = commonDeps;
+              buildInputs = [
+                pkgs.mill
+                pkgs.espresso
+              ];
             };
           };
-        }
-      )
-    // { inherit inputs; overlays.default = overlay; };
+
+          treefmt = {
+            projectRootFile = "flake.nix";
+            settings.verbose = 1;
+            programs.nixfmt.enable = pkgs.lib.meta.availableOn pkgs.stdenv.buildPlatform pkgs.nixfmt-rfc-style.compiler;
+          };
+        };
+    });
 }
