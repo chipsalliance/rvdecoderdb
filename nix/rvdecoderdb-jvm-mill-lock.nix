@@ -1,4 +1,5 @@
-{ fetchurl }: {
+{ fetchurl }:
+{
 
   "com.eed3si9n_shaded-jawn-parser_2.13-1.3.2" = fetchurl {
     name = "com.eed3si9n_shaded-jawn-parser_2.13-1.3.2";
@@ -63,7 +64,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/sjson-new-core_2.13-0.9.0.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/com/eed3si9n/sjson-new-core_2.13/0.9.0";
   };
@@ -95,7 +96,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/oss-parent-58.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/com/fasterxml/oss-parent/58";
   };
@@ -127,7 +128,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/geny_2.13-1.0.0.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/com/lihaoyi/geny_2.13/1.0.0";
   };
@@ -555,7 +556,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/jakarta.jakartaee-bom-9.1.0.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/jakarta/platform/jakarta.jakartaee-bom/9.1.0";
   };
@@ -569,7 +570,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/jakartaee-api-parent-9.1.0.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/jakarta/platform/jakartaee-api-parent/9.1.0";
   };
@@ -583,7 +584,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/java-parent-pom-1.1.28.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/net/openhft/java-parent-pom/1.1.28";
   };
@@ -597,7 +598,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/root-parent-pom-1.2.12.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/net/openhft/root-parent-pom/1.2.12";
   };
@@ -629,7 +630,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/apache-33.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/org/apache/apache/33";
   };
@@ -643,7 +644,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/fusesource-pom-1.12.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/org/fusesource/fusesource-pom/1.12";
   };
@@ -711,7 +712,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/jline-parent-3.27.1.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/org/jline/jline-parent/3.27.1";
   };
@@ -761,7 +762,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/junit-bom-5.10.3.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/org/junit/junit-bom/5.10.3";
   };
@@ -775,7 +776,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/mockito-bom-4.11.0.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/org/mockito/mockito-bom/4.11.0";
   };
@@ -938,7 +939,7 @@
       tryDownload "https://repo1.maven.org/maven2/org/scala-sbt/compiler-bridge_2.13/1.10.7/compiler-bridge_2.13-1.10.7.jar"
       cp -v "$TMPDIR/compiler-bridge_2.13-1.10.7.jar" "$out/"
 
-      
+
       downloadedFile=$TMPDIR/compiler-bridge_2.13-1.10.7-sources.jar
       tryDownload "https://repo1.maven.org/maven2/org/scala-sbt/compiler-bridge_2.13/1.10.7/compiler-bridge_2.13-1.10.7-sources.jar"
       cp -v "$TMPDIR/compiler-bridge_2.13-1.10.7-sources.jar" "$out/"
@@ -979,7 +980,7 @@
       tryDownload "https://repo1.maven.org/maven2/org/scala-sbt/compiler-interface/1.10.7/compiler-interface-1.10.7.jar"
       cp -v "$TMPDIR/compiler-interface-1.10.7.jar" "$out/"
 
-      
+
       downloadedFile=$TMPDIR/compiler-interface-1.10.7-sources.jar
       tryDownload "https://repo1.maven.org/maven2/org/scala-sbt/compiler-interface/1.10.7/compiler-interface-1.10.7-sources.jar"
       cp -v "$TMPDIR/compiler-interface-1.10.7-sources.jar" "$out/"
@@ -1128,7 +1129,7 @@
       tryDownload "https://repo1.maven.org/maven2/org/scala-sbt/util-interface/1.10.7/util-interface-1.10.7.jar"
       cp -v "$TMPDIR/util-interface-1.10.7.jar" "$out/"
 
-      
+
       downloadedFile=$TMPDIR/util-interface-1.10.7-sources.jar
       tryDownload "https://repo1.maven.org/maven2/org/scala-sbt/util-interface/1.10.7/util-interface-1.10.7-sources.jar"
       cp -v "$TMPDIR/util-interface-1.10.7-sources.jar" "$out/"
@@ -1344,7 +1345,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/spring-framework-bom-5.3.39.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/org/springframework/spring-framework-bom/5.3.39";
   };
@@ -1358,7 +1359,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/jackson-bom-2.17.2.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/com/fasterxml/jackson/jackson-bom/2.17.2";
   };
@@ -1372,7 +1373,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/jackson-parent-2.17.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/com/fasterxml/jackson/jackson-parent/2.17";
   };
@@ -1422,7 +1423,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/java-diff-utils-parent-4.12.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/io/github/java-diff-utils/java-diff-utils-parent/4.12";
   };
@@ -1436,7 +1437,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/java-diff-utils-parent-4.15.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/io/github/java-diff-utils/java-diff-utils-parent/4.15";
   };
@@ -1450,7 +1451,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/groovy-bom-4.0.22.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/org/apache/groovy/groovy-bom/4.0.22";
   };
@@ -1464,7 +1465,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/logging-parent-11.3.0.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/org/apache/logging/logging-parent/11.3.0";
   };
@@ -1478,7 +1479,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/project-1.0.7.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/org/eclipse/ee4j/project/1.0.7";
   };
@@ -1618,7 +1619,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/log4j-2.24.3.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/org/apache/logging/log4j/log4j/2.24.3";
   };
@@ -1650,7 +1651,7 @@
     postFetch = ''
       mkdir -p "$out"
       cp -v "$downloadedFile" "$out/log4j-bom-2.24.3.pom"
-      
+
     '';
     passthru.installPath = "https/repo1.maven.org/maven2/org/apache/logging/log4j/log4j-bom/2.24.3";
   };

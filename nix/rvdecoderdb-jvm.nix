@@ -1,20 +1,23 @@
-{ lib
-, publishMillJar
-, writeShellApplication
-, mill
-, mill-ivy-fetcher
+{
+  lib,
+  publishMillJar,
+  writeShellApplication,
+  mill,
+  mill-ivy-fetcher,
 }:
 publishMillJar rec {
   name = "rvdecoderdb";
 
-  src = with lib.fileset; toSource {
-    fileset = unions [
-      ../build.mill
-      ../common.mill
-      ../rvdecoderdb
-    ];
-    root = ../.;
-  };
+  src =
+    with lib.fileset;
+    toSource {
+      fileset = unions [
+        ../build.mill
+        ../common.mill
+        ../rvdecoderdb
+      ];
+      root = ../.;
+    };
 
   publishTargets = [
     "rvdecoderdb.jvm"
