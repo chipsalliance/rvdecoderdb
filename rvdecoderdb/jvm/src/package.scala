@@ -49,19 +49,21 @@ package object rvdecoderdb {
 
   def csrs(riscvOpcodes: os.Path): Seq[(String, Int)] =
     Seq(os.read(riscvOpcodes / "csrs.csv"), os.read(riscvOpcodes / "csrs32.csv")).flatMap(
-      _.split("\n").map { str =>
-        val l = str
-          .replace(" ", "")
-          .replace("\"", "")
-          .replace("\'", "")
-          .split(",")
-        l(1) -> java.lang.Long.decode(l(0)).toInt
-      }.toMap
+      _.split("\n")
+        .map { str =>
+          val l = str
+            .replace(" ", "")
+            .replace("\"", "")
+            .replace("\'", "")
+            .split(",")
+          l(1) -> java.lang.Long.decode(l(0)).toInt
+        }
+        .toMap
     )
 
   def extractResource(cl: ClassLoader): os.Path = {
     val rvdecoderdbPath = os.temp.dir()
-    val rvdecoderdbTar = os.temp(os.read(os.resource(cl) / "riscv-opcodes.tar"))
+    val rvdecoderdbTar  = os.temp(os.read(os.resource(cl) / "riscv-opcodes.tar"))
     os.proc("tar", "xf", rvdecoderdbTar).call(rvdecoderdbPath)
     rvdecoderdbPath
   }
@@ -70,8 +72,8 @@ package object rvdecoderdb {
   object fromFile {
     def instructions(riscvOpcodes: os.Path, custom: Iterable[os.Path] = Seq.empty): Iterable[Instruction] =
       rvdecoderdb.instructions(riscvOpcodes, custom)
-    def argLut(riscvOpcodes: os.Path): Map[String, Arg] = rvdecoderdb.argLut(riscvOpcodes)
-    def causes(riscvOpcodes: os.Path): Map[String, Int] = rvdecoderdb.causes(riscvOpcodes)
-    def csrs(riscvOpcodes:   os.Path): Seq[(String, Int)] = rvdecoderdb.csrs(riscvOpcodes)
+    def argLut(riscvOpcodes: os.Path):                                              Map[String, Arg]      = rvdecoderdb.argLut(riscvOpcodes)
+    def causes(riscvOpcodes: os.Path):                                              Map[String, Int]      = rvdecoderdb.causes(riscvOpcodes)
+    def csrs(riscvOpcodes:   os.Path):                                              Seq[(String, Int)]    = rvdecoderdb.csrs(riscvOpcodes)
   }
 }

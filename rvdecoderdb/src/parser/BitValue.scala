@@ -16,7 +16,7 @@ object BitValue {
           }
         )
       )
-    case _ => None
+    case _                  => None
   }
 }
 

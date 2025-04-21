@@ -2,3 +2,7 @@
 /.idea/
 /.bsp/
 result
+.metals/
+.ccls-cache/
+**/target/
+result*

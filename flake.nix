@@ -63,12 +63,37 @@
                 pkgs.espresso
               ];
             };
+
+            sailEnv = pkgs.mkShell {
+              packages = with pkgs; [
+                ccls
+                rust-analyzer
+                sail-riscv.sail
+              ];
+
+              inputsFrom = with pkgs.sail-riscv; [
+                sailcodegen
+                boat.sail_ffi
+                boat.emulator
+              ];
+            };
           };
 
           treefmt = {
             projectRootFile = "flake.nix";
-            settings.verbose = 1;
-            programs.nixfmt.enable = pkgs.lib.meta.availableOn pkgs.stdenv.buildPlatform pkgs.nixfmt-rfc-style.compiler;
+            settings.on-unmatched = "debug";
+            programs = {
+              nixfmt.enable = true;
+              scalafmt.enable = true;
+              rustfmt.enable = true;
+            };
+            settings.formatter = {
+              nixfmt.excludes = [ "*/generated.nix" ];
+              scalafmt.includes = [
+                "*.sc"
+                "*.mill"
+              ];
+            };
           };
         };
     });

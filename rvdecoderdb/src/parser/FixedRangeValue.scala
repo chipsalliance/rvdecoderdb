@@ -17,7 +17,7 @@ object FixedRangeValue {
           }
         )
       )
-    case _ => None
+    case _                          => None
   }
 }
 

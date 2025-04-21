@@ -7,26 +7,28 @@ import mill.scalalib._, publish._
 import mill.scalalib.scalafmt._
 
 object v {
-  val scala = "2.13.16"
+  val scala   = "2.13.16"
   val scalajs = "1.18.2"
   object jvm {
-    val oslib = ivy"com.lihaoyi::os-lib:0.9.1"
+    val oslib   = ivy"com.lihaoyi::os-lib:0.9.1"
     val upickle = ivy"com.lihaoyi::upickle:3.3.1"
   }
-  object js {
+  object js  {
     val upickle = ivy"com.lihaoyi::upickle::3.3.1"
   }
 }
 
 trait RVDecoderDBJVMModule extends common.RVDecoderDBJVMModule with PublishModule with ScalafmtModule {
-  override def allSources: T[Seq[PathRef]] = T(Seq(PathRef(millSourcePath / os.up / "src"), PathRef(millSourcePath / os.up / "jvm" / "src")))
+  override def allSources: T[Seq[PathRef]] = T(
+    Seq(PathRef(millSourcePath / os.up / "src"), PathRef(millSourcePath / os.up / "jvm" / "src"))
+  )
   def scalaVersion = T(v.scala)
-  def osLibIvy = v.jvm.oslib
-  def upickleIvy= v.jvm.upickle
+  def osLibIvy     = v.jvm.oslib
+  def upickleIvy   = v.jvm.upickle
 
   def publishVersion = "0.0.0+0-no-vcs-SNAPSHOT"
 
-  def pomSettings = PomSettings (
+  def pomSettings = PomSettings(
     description = "rvdecoderdb",
     organization = "me.jiuyang",
     url = "https://github.com/sequencer/rvdecoderdb",
@@ -37,14 +39,14 @@ trait RVDecoderDBJVMModule extends common.RVDecoderDBJVMModule with PublishModul
 }
 
 trait RVDecoderDBJSModule extends common.RVDecoderDBJSModule with ScalafmtModule {
-  def scalaVersion = T(v.scala)
+  def scalaVersion   = T(v.scala)
   def scalaJSVersion = T(v.scalajs)
-  def upickleIvy = v.js.upickle
+  def upickleIvy     = v.js.upickle
 }
 
 object rvdecoderdb extends Module { m =>
   object jvm extends RVDecoderDBJVMModule
-  object js extends RVDecoderDBJSModule
+  object js  extends RVDecoderDBJSModule
 }
 
 trait RVDecoderDBJVMTestModule extends common.RVDecoderDBJVMTestModule with ScalafmtModule {
@@ -54,22 +56,21 @@ trait RVDecoderDBJVMTestModule extends common.RVDecoderDBJVMTestModule with Scal
 }
 
 trait RVDecoderDBJSTestModule extends common.RVDecoderDBTestJSModule with ScalafmtModule {
-  def dut = rvdecoderdb.js
-  def scalaVersion = T(v.scala)
+  def dut            = rvdecoderdb.js
+  def scalaVersion   = T(v.scala)
   def scalaJSVersion = T(v.scalajs)
 }
 
 object rvdecoderdbtest extends Module { m =>
   object jvm extends RVDecoderDBJVMTestModule
-  object js extends RVDecoderDBJSTestModule
+  object js  extends RVDecoderDBJSTestModule
 }
 
 trait SailCodeGenJVMModule extends common.SailCodeGenJVMModule with ScalafmtModule {
   def dut = rvdecoderdb.jvm
   def riscvOpcodesPath: T[Option[PathRef]] = T.input(Some(PathRef(millSourcePath / "riscv-opcodes")))
-  def scalaVersion = T(v.scala)
+  def scalaVersion     = T(v.scala)
+  override def ivyDeps = T(super.ivyDeps() ++ Seq(ivy"com.lihaoyi::mainargs:0.5.0"))
 }
 
-object sailcodegen extends Module { m =>
-  object jvm extends SailCodeGenJVMModule
-}
+object sailcodegen extends SailCodeGenJVMModule {}

@@ -7,8 +7,8 @@ import org.chipsalliance.rvdecoderdb.{Arg, Instruction, InstructionSet}
 
 object parse {
   def apply(
-    opcodeFiles: Iterable[(String, String, Boolean, Boolean)],
-    argLut:      Map[String, (Int, Int)]
+      opcodeFiles: Iterable[(String, String, Boolean, Boolean)],
+      argLut:      Map[String, (Int, Int)]
   ): Iterable[Instruction] = {
     val rawInstructionSets: Iterable[RawInstructionSet] = opcodeFiles.map {
       case (instructionSet, content, ratified, custom) =>
@@ -40,22 +40,22 @@ object parse {
     }
     // for general instructions which doesn't collide.
     val instructionSetsMap = collection.mutable.HashMap.empty[String, Seq[String]]
-    val ratifiedMap = collection.mutable.HashMap.empty[String, Boolean]
-    val argsMap = collection.mutable.HashMap.empty[String, Seq[Arg]]
-    val customMap = collection.mutable.HashMap.empty[String, Boolean]
-    val encodingMap = collection.mutable.HashMap.empty[String, org.chipsalliance.rvdecoderdb.Encoding]
+    val ratifiedMap       = collection.mutable.HashMap.empty[String, Boolean]
+    val argsMap           = collection.mutable.HashMap.empty[String, Seq[Arg]]
+    val customMap         = collection.mutable.HashMap.empty[String, Boolean]
+    val encodingMap       = collection.mutable.HashMap.empty[String, org.chipsalliance.rvdecoderdb.Encoding]
     // for pseudo instructions, they only exist in on instruction set, and pseudo from another general instruction
     // thus key should be (set:String, name: String)
-    val pseudoFromMap = collection.mutable.HashMap.empty[(String, String), String]
-    val pseudoCustomMap = collection.mutable.HashMap.empty[(String, String), Boolean]
-    val pseudoArgsMap = collection.mutable.HashMap.empty[(String, String), Seq[Arg]]
+    val pseudoFromMap     = collection.mutable.HashMap.empty[(String, String), String]
+    val pseudoCustomMap   = collection.mutable.HashMap.empty[(String, String), Boolean]
+    val pseudoArgsMap     = collection.mutable.HashMap.empty[(String, String), Seq[Arg]]
     val pseudoRatifiedMap = collection.mutable.HashMap.empty[(String, String), Boolean]
     val pseudoEncodingMap = collection.mutable.HashMap.empty[(String, String), org.chipsalliance.rvdecoderdb.Encoding]
 
     // create normal instructions
     rawInstructionSets.foreach { set: RawInstructionSet =>
       set.rawInstructions.foreach {
-        case rawInst: RawInstruction if rawInst.isNormal =>
+        case rawInst: RawInstruction if rawInst.isNormal                    =>
           require(
             instructionSetsMap.get(rawInst.name).isEmpty,
             s"redefined instruction: ${rawInst.name} in ${instructionSetsMap(rawInst.name).head} and ${set.name}"
@@ -80,11 +80,10 @@ object parse {
     rawInstructionSets.foreach { set: RawInstructionSet =>
       set.rawInstructions.foreach {
         case rawInst: RawInstruction if rawInst.importInstructionSet.isDefined =>
-          instructionSetsMap.filter(_._2.head == rawInst.importInstructionSet.get).map {
-            case (k, v) =>
-              instructionSetsMap.update(k, v ++ Some(set.name))
+          instructionSetsMap.filter(_._2.head == rawInst.importInstructionSet.get).map { case (k, v) =>
+            instructionSetsMap.update(k, v ++ Some(set.name))
           }
-        case rawInst: RawInstruction if rawInst.importInstruction.isDefined =>
+        case rawInst: RawInstruction if rawInst.importInstruction.isDefined    =>
           val k = rawInst.importInstruction.get._2
           val v = instructionSetsMap(k)
           instructionSetsMap.update(k, v ++ Some(set.name))
