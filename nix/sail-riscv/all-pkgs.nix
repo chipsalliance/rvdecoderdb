@@ -37,7 +37,7 @@ lib.makeScope newScope (sailRiscvPkgs: {
 
   generated-sail-srcs = sailRiscvPkgs.callPackage ./generated-sail-srcs.nix { };
 
-  rvmodel = sailRiscvPkgs.callPackage ./make-sail-rvmodel.nix { };
+  rvmodel = sailRiscvPkgs.callPackage ./rvmodel.nix { };
 
   boat = sailRiscvPkgs.callPackage ../../sail-impl/boat/package.nix { };
 })
