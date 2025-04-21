@@ -67,14 +67,12 @@
             sailEnv = pkgs.mkShell {
               packages = with pkgs; [
                 ccls
-                rust-analyzer
+                metals
                 sail-riscv.sail
               ];
 
               inputsFrom = with pkgs.sail-riscv; [
                 sailcodegen
-                boat.sail_ffi
-                boat.emulator
               ];
             };
           };

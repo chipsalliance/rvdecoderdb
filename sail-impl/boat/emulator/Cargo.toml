@@ -1,0 +1,8 @@
+[package]
+name = "boat"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+clap = { version = "4.5.37", features = ["derive"] }
+sail_ffi = { path = "../sail_ffi" }

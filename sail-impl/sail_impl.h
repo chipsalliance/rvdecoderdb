@@ -1,19 +1,20 @@
-#pragma once
-#include "sail.h"
+#include <stdbool.h>
+#include <stdint.h>
+
+typedef char* sail_string;
+typedef int unit;
 
 // debug
 unit print_instr(sail_string s);
 unit print_reg(sail_string s);
 unit print_platform(sail_string s);
 
-// need to implement
-mach_bits inst_fetch(mach_bits pc);
-uint64_t readmem(uint64_t address, uint64_t satp);
-unit writemem(uint64_t address, uint64_t data, uint64_t bytes, uint64_t satp);
-bool exception_raised(unit);
-uint64_t get_exception(unit);
-unit fence_i(uint16_t pred, uint16_t succ);
+// Exec
+uint32_t inst_fetch(uint64_t pc);
+unit fence_i(uint8_t pred, uint8_t succ);
 bool is_reset(unit);
+uint64_t readmem(uint64_t addr, uint64_t satp);
+unit writemem(uint64_t addr, uint64_t data, uint64_t bytes, uint64_t satp);
 
 // GPRs
 uint64_t get_resetval_x0(unit);

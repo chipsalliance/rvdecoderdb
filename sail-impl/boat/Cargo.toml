@@ -1,0 +1,10 @@
+[workspace]
+resolver = "2"
+members = [ "sail_ffi", "emulator" ]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+hex = "0.4.3"

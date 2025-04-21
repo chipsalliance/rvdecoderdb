@@ -1,0 +1,11 @@
+[package]
+name = "sail_ffi"
+edition.workspace = true
+version.workspace = true
+
+[build-dependencies]
+bindgen = "0.71.0"
+
+[dependencies]
+xmas-elf = "0.9.1"
+hex = { workspace = true }
