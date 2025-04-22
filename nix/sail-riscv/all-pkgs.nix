@@ -3,6 +3,7 @@
   newScope,
   fetchFromGitHub,
   ocamlPackages,
+  pkgsCross,
 }:
 lib.makeScope newScope (sailRiscvPkgs: {
   ocamlPackages = ocamlPackages.overrideScope (
@@ -40,4 +41,8 @@ lib.makeScope newScope (sailRiscvPkgs: {
   rvmodel = sailRiscvPkgs.callPackage ./rvmodel.nix { };
 
   boat = sailRiscvPkgs.callPackage ../../sail-impl/boat/package.nix { };
+
+  test-elf = sailRiscvPkgs.callPackage ../../sail-impl/tests/package.nix {
+    rv64-stdenv = pkgsCross.riscv64.stdenv;
+  };
 })
