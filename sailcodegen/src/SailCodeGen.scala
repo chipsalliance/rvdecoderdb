@@ -321,7 +321,12 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
       org.chipsalliance.rvdecoderdb
         .instructions(riscvOpCodesPath)
         .filter(inst => !inst.name.endsWith(".N"))
-        .filter(inst => arch.extensions.exists(ext => inst.instructionSet.name.endsWith(s"rv_$ext")))
+        .filter(inst =>
+          arch.extensions.exists(ext => {
+            val name = inst.instructionSet.name
+            name.endsWith(s"rv_$ext") || name.endsWith(s"rv${arch.xlen}_${ext}")
+          })
+        )
         .map(inst =>
           inst.pseudoFrom match {
             case Some(_) => ""
@@ -467,6 +472,7 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
     range.map(i => s"register x$i : XLENBITS").mkString("\n")
   }
 
+  // TODO: this should be provide by user instead of generate like this
   def genGPRRW(arch: Arch): String = {
     def toBinaryString5(i: Int): String = {
       String.format("%5s", i.toBinaryString).replace(' ', '0')
