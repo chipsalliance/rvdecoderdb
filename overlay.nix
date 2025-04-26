@@ -26,4 +26,8 @@ final: prev: {
   };
 
   sail-riscv = final.callPackage ./nix/sail-riscv/all-pkgs.nix { };
+
+  spike = final.callPackage ./nix/difftest/spike.nix { };
+
+  riscv-tests = final.callPackage ./nix/difftest/riscv-tests.nix { };
 }

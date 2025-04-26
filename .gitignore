@@ -6,3 +6,6 @@ result
 .ccls-cache/
 **/target/
 result*
+.envrc
+.direnv/
+source/
