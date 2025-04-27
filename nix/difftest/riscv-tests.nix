@@ -1,6 +1,6 @@
-{ pkgsCross, fetchFromGitHub }:
+{ rv32-stdenv, fetchFromGitHub }:
 
-pkgsCross.riscv32-embedded.stdenv.mkDerivation {
+rv32-stdenv.mkDerivation {
   name = "riscv-tests";
   src = fetchFromGitHub {
     owner = "riscv-software-src";
@@ -14,7 +14,7 @@ pkgsCross.riscv32-embedded.stdenv.mkDerivation {
 
   configureFlags = [
     # to match rocket-tools path
-    "--prefix=${placeholder "out"}/riscv32-unknown-elf"
+    "--prefix=${placeholder "out"}/${rv32-stdenv.targetPlatform.config}"
   ];
-  buildPhase = "make RISCV_PREFIX=riscv32-none-elf-";
+  buildPhase = "make RISCV_PREFIX=${rv32-stdenv.targetPlatform.config}-";
 }

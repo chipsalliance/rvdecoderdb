@@ -29,5 +29,9 @@ final: prev: {
 
   spike = final.callPackage ./nix/difftest/spike.nix { };
 
-  riscv-tests = final.callPackage ./nix/difftest/riscv-tests.nix { };
+  riscv-tests =
+    let
+      rv32-stdenv = prev.pkgsCross.riscv32-embedded.stdenv;
+    in
+    final.callPackage ./nix/difftest/riscv-tests.nix { inherit rv32-stdenv; };
 }
