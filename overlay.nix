@@ -27,11 +27,11 @@ final: prev: {
 
   sail-riscv = final.callPackage ./nix/sail-riscv/all-pkgs.nix { };
 
-  spike = final.callPackage ./nix/difftest/spike.nix { };
-
-  riscv-tests =
+  spike-log =
     let
       rv32-stdenv = prev.pkgsCross.riscv32-embedded.stdenv;
     in
-    final.callPackage ./nix/difftest/riscv-tests.nix { inherit rv32-stdenv; };
+    final.callPackage ./nix/difftest/spike-log.nix {
+      inherit rv32-stdenv;
+    };
 }
