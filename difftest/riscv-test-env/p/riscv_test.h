@@ -210,7 +210,6 @@ handle_exception:                                                       \
   write_tohost:                                                         \
         sw TESTNUM, tohost, t5;                                         \
         sw zero, tohost + 4, t5;                                        \
-        j write_tohost;                                                 \
 reset_vector:                                                           \
         INIT_XREG;                                                      \
         RISCV_MULTICORE_DISABLE;                                        \
@@ -247,13 +246,8 @@ reset_vector:                                                           \
 // End Macro
 //-----------------------------------------------------------------------
 
-#define EXIT_POS 0x10000000;
-#define EXIT_CODE 0xdeadbeef;
 #define RVTEST_CODE_END                                                 \
-        li x1, EXIT_POS;                                                \
-        li x2, EXIT_CODE;                                               \
-        sw x2, 0(x1);                                                   \
-        j .;
+        ebreak;                                                         \
 
 //-----------------------------------------------------------------------
 // Pass/Fail Macro
