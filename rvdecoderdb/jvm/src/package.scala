@@ -68,6 +68,13 @@ package object rvdecoderdb {
     rvdecoderdbPath
   }
 
+  def extractCustomResource(cl: ClassLoader): os.Path = {
+    val rvdecoderdbPath = os.temp.dir()
+    val rvdecoderdbTar  = os.temp(os.read(os.resource(cl) / "riscv-custom-opcodes.tar"))
+    os.proc("tar", "xf", rvdecoderdbTar).call(rvdecoderdbPath)
+    rvdecoderdbPath
+  }
+
   @deprecated("remove fromFile")
   object fromFile {
     def instructions(riscvOpcodes: os.Path, custom: Iterable[os.Path] = Seq.empty): Iterable[Instruction] =
