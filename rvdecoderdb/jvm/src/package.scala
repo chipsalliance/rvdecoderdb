@@ -18,7 +18,13 @@ package object rvdecoderdb {
         .filter(os.isFile)
         .map(f => (f.baseName, os.read(f), !f.segments.contains("unratified"), false)) ++
         custom
-          .map(f => (f.baseName, os.read(f), false, true)),
+          .flatMap(p => {
+            if (os.isFile(p)) {
+              Seq((p.baseName, os.read(p), false, true))
+            } else {
+              os.walk(p).filter(os.isFile).map(f => (f.baseName, os.read(f), false, true))
+            }
+          }),
       argLut(riscvOpcodes).view.mapValues(a => (a.lsb, a.msb)).toMap
     )
   }
