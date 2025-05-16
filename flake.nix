@@ -73,6 +73,7 @@
 
               inputsFrom = with pkgs.sail-riscv; [
                 sailcodegen
+                rvmodel
               ];
             };
           };

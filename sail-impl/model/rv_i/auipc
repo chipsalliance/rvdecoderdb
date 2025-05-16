@@ -1,0 +1,4 @@
+let off : XLENBITS = sign_extend(imm20 << 12);
+let ret : XLENBITS = PC + off;
+write_GPR(rd, ret);
+tick_pc();

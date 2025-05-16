@@ -20,10 +20,11 @@ stdenv.mkDerivation {
     zlib
   ];
 
-  src = generated-sail-srcs;
+  src = ../../sail-impl/model;
 
   makeFlags = [
     "SAIL_SRC_DIR=${sail}/share/sail/lib"
+    "GENERATED_SAIL_SRC_DIR=${generated-sail-srcs}"
     "prefix=${placeholder "out"}"
   ];
 }

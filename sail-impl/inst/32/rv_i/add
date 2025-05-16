@@ -1,4 +1,0 @@
-let rs1_val = read_GPR(rs1);
-let rs2_val = read_GPR(rs2);
-write_GPR(rd, rs1_val + rs2_val);
-nextPC = PC + 4;

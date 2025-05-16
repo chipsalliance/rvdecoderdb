@@ -8,15 +8,15 @@ import mainargs._
 object Main {
   @main
   case class Params(
-      @arg(short = 'i', name = "sail-impl-dir", doc = "Path to sail implementation")
-      sailImplDir:      os.Path,
+      @arg(short = 'i', name = "model-dir", doc = "Path to Sail model implementation")
+      sailModelDir:      os.Path,
       @arg(short = 'o', name = "output-dir", doc = "Output directory path to generate sail sources")
       outputDir:        os.Path,
       @arg(short = 'r', name = "riscv-opcodes-path", doc = "Path to riscv-opcodes path")
       riscvOpCodesPath: os.Path
   ) {
     def convert: SailCodeGeneratorParams = SailCodeGeneratorParams(
-      sailImplDir,
+      sailModelDir,
       outputDir,
       riscvOpCodesPath
     )
@@ -106,12 +106,12 @@ object SailImplMeta {
   implicit val rw: RW[SailImplMeta] = macroRW
 }
 
-case class SailCodeGeneratorParams(sailImplDir: os.Path, outputDir: os.Path, riscvOpCodesPath: os.Path)
+case class SailCodeGeneratorParams(sailModelDir: os.Path, outputDir: os.Path, riscvOpCodesPath: os.Path)
 class SailCodeGenerator(params: SailCodeGeneratorParams) {
-  import params.{outputDir, riscvOpCodesPath, sailImplDir}
+  import params.{outputDir, riscvOpCodesPath, sailModelDir}
 
   def gen() {
-    val meta = read[SailImplMeta](os.read(sailImplDir / "sail-impl-meta.json"))
+    val meta = read[SailImplMeta](os.read(sailModelDir / "meta.json"))
 
     val parsedArch = Arch.fromMarch(meta.march)
     if (parsedArch.isEmpty) {
@@ -124,7 +124,7 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
       case 64 => "csr64.json"
       case _  => throw new IllegalArgumentException("Invalid arch or xlen")
     }
-    val csrs              = read[Seq[CSR]](os.read(sailImplDir / "csr" / csrConfigFilename))
+    val csrs              = read[Seq[CSR]](os.read(sailModelDir / "csr" / csrConfigFilename))
 
     os.makeDir.all(outputDir / "arch")
     genExtEnable(arch)
@@ -246,8 +246,7 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
   }
 
   def genSailExcute(arch: Arch, inst: Instruction): String = {
-    val path =
-      sailImplDir / "inst" / arch.xlen.toString / inst.instructionSet.name / inst.name.replace(".", "_")
+    val path = sailModelDir / inst.instructionSet.name / inst.name.replace(".", "_")
 
     if (os.exists(path)) {
       "function clause execute " + "(" +
@@ -265,7 +264,7 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
           })
           .mkString(", ") + ")) = {" + os.read(path).split('\n').map(line => "\n\t" + line).mkString + "\n" + "}"
     } else {
-      ""
+      throw new Exception(s"WARNING: instruction '${inst.name}' not found at path '${path}'")
     }
   }
 
@@ -314,7 +313,7 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
 
   def genRVSail(arch: Arch): Unit = {
     val rvCorePath      = outputDir / "rv_core.sail"
-    val illegalInstPath = sailImplDir / "inst" / arch.xlen.toString / "illegal"
+    val illegalInstPath = sailModelDir / "arch" / "illegal"
 
     os.write.over(
       rvCorePath,
@@ -368,7 +367,7 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
       case Right(bfs) =>
         bfs
           .map { bf =>
-            val path = os.pwd / "sailcodegen" / "jvm" / "src" / "sail" / "csr" / "W" / csr.csrname / bf.bfname
+            val path = sailModelDir / "csr" / "W" / csr.csrname / bf.bfname
 
             if (csr.width == "64") {
               s"function set_${csr.csrname}_${bf.bfname}(v : bits(64)) -> unit = ${if (os.exists(path)) {
@@ -412,7 +411,7 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
       case Right(bfs) =>
         bfs
           .map { bf =>
-            val path = os.pwd / "sailcodegen" / "jvm" / "src" / "sail" / "csr" / "R" / csr.csrname / bf.bfname
+            val path = sailModelDir / "csr" / "R" / csr.csrname / bf.bfname
 
             if (csr.width == "64") {
               s"function get_${csr.csrname}_${bf.bfname}() -> bits(64) = ${if (os.exists(path)) {
@@ -490,11 +489,11 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
   }
 
   def genCSRRegDef(csrs: Seq[CSR]): String = {
-    csrs.map(csr => s"register ${csr.csrname}\t\t\t\t: ${csr.csrname.toUpperCase}\n").mkString
+    csrs.map(csr => s"register ${csr.csrname} : ${csr.csrname.toUpperCase}\n").mkString
   }
 
   def genArchStatesDef(arch: Arch, csrs: Seq[CSR]): Unit = {
-    val archStatesPath = outputDir / "arch" / "ArchStates.sail"
+    val archStatesPath = outputDir / "arch" / "arch_states.sail"
 
     os.write.over(
       archStatesPath,
@@ -502,21 +501,19 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
         genGPRDef(arch) + "\n" +
         "// CSRs\n" +
         genCSRRegDef(csrs) + "\n" +
-        "// PC\n" +
-        "register PC : XLENBITS\n" +
         "// Privilege\n" +
         "register cur_privilege : Privilege\n"
     )
   }
 
   def genCSRBFDef(csrs: Seq[CSR]): Unit = {
-    val csrBFPath = outputDir / "arch" / "ArchStateCsrBF.sail"
+    val csrBFPath = outputDir / "arch" / "arch_state_csr_bf.sail"
 
     os.write.over(csrBFPath, csrs.map(csr => genCSRBitfields(csr) + "\n\n"))
   }
 
   def genArchStatesReset(arch: Arch, csrs: Seq[CSR]): Unit = {
-    val archStatesPath = outputDir / "arch" / "ArchStatesReset.sail"
+    val archStatesPath = outputDir / "arch" / "arch_states_reset.sail"
 
     val range = if (arch.extensions.contains("e")) 0 to 15 else 0 to 31
 
@@ -569,7 +566,7 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
   }
 
   def genArchStatesRW(arch: Arch, csrs: Seq[CSR]): Unit = {
-    val archStatesPath = outputDir / "arch" / "ArchStatesRW.sail"
+    val archStatesPath = outputDir / "arch" / "arch_states_rw.sail"
 
     os.write.over(
       archStatesPath,
@@ -595,7 +592,7 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
   }
 
   def genExtEnable(arch: Arch): Unit = {
-    val extPath = outputDir / "arch" / "ArchStatesPrivEnable.sail"
+    val extPath = outputDir / "arch" / "arch_states_priv_enable.sail"
     os.makeDir.all(extPath / os.up)
 
     os.write.over(

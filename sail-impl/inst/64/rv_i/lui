@@ -1,3 +1,0 @@
-let off : XLENBITS = sign_extend(imm20 @ 0x000);
-write_GPR(rd, off);
-nextPC = PC + 4;

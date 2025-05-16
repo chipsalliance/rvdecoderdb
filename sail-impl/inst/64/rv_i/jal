@@ -1,3 +1,0 @@
-let t : XLENBITS = PC + sign_extend(jimm20);
-write_GPR(0b00001, t);
-nextPC = t;
