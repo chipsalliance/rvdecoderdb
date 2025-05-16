@@ -56,6 +56,7 @@ _start:
     // exit
     li a0, 1
     call do_tohost
+    ebreak
 
     .p2align 2
 

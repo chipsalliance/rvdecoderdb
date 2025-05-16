@@ -3,7 +3,7 @@ use crate::model::{MarchBits, SAIL_UNIT};
 use std::io::Read;
 use std::sync::Mutex;
 use thiserror::Error;
-use tracing::{event, Level};
+use tracing::{event, span, Level};
 use xmas_elf::program::{ProgramHeader, Type};
 use xmas_elf::{header, ElfFile};
 
@@ -40,17 +40,7 @@ impl SimulatorParams {
 
 impl From<SimulatorParams> for &SimulatorHandler<Simulator> {
     fn from(params: SimulatorParams) -> Self {
-        let mut sim = Simulator {
-            memory: vec![0u8; params.memory_size],
-            instruction_count: 0,
-            step_count: 0,
-            fetch_count: 0,
-            is_reset: true,
-            exception: None,
-            last_instruction: 0,
-            last_instruction_met_count: 0,
-            max_same_instruction: params.max_same_instruction,
-        };
+        let mut sim = Simulator::new(params.memory_size, params.max_same_instruction);
 
         unsafe {
             crate::model::model_init();
@@ -78,17 +68,51 @@ pub struct Simulator {
     last_instruction: u64,
     last_instruction_met_count: u8,
     max_same_instruction: u8,
+    last_reg_state: LastRegState<32>,
 }
 
 impl Simulator {
+    fn new(memory_size: usize, max_same_instruction: u8) -> Self {
+        Self {
+            memory: vec![0u8; memory_size],
+            instruction_count: 0,
+            step_count: 0,
+            fetch_count: 0,
+            is_reset: true,
+            exception: None,
+            last_instruction: 0,
+            last_instruction_met_count: 0,
+            last_reg_state: LastRegState::new(),
+            max_same_instruction,
+        }
+    }
+
+    fn regs_to_seq() -> [MarchBits; 32] {
+        use crate::ffi::read_register;
+        let mut reg_seq = [0; 32];
+        (0..32).into_iter().for_each(|i| {
+            reg_seq[i] = read_register(
+                i.try_into()
+                    .expect("fail converting usize to register index"),
+            )
+        });
+        reg_seq
+    }
+
     // We can't use step here cuz the Simulator is always used in a Mutex lock, multiple simulator
     // call at the same time will lead to dead lock.
     pub fn check_step(&mut self) -> Result<(), SimulationException> {
-        event!(
-            Level::TRACE,
+        let updated = self.last_reg_state.update(&Self::regs_to_seq());
+
+        let span = span!(
+            Level::DEBUG,
+            ("check register"),
             pc = format!("{:#x}", crate::ffi::get_pc()),
-            "current state of register",
         );
+        let _guard = span.enter();
+        updated.iter().for_each(|(name, val)| {
+            event!(Level::DEBUG, "x{}: {:#x}", name, val);
+        });
 
         if let Some(exception) = &self.exception {
             return Err(exception.clone());
@@ -224,16 +248,13 @@ impl Simulator {
             address
         );
 
-        if N == std::mem::size_of::<u32>() {
-            const EXIT_ADDR: u64 = 0x10000000;
-            const EXIT_CODE: u32 = 0xdeadbeef;
+        const EXIT_ADDR: u64 = 0x40000000;
 
-            // we can safely unwrap here since we already type check the size of input `N`
-            if address == EXIT_ADDR && value.to_u32().unwrap() == EXIT_CODE {
-                event!(Level::INFO, "exit address got written, exit simulator");
-                self.exception = Some(SimulationException::Exited);
-                return;
-            }
+        // we can safely unwrap here since we already type check the size of input `N`
+        if address == EXIT_ADDR {
+            event!(Level::INFO, "exit address got written, exit simulator");
+            self.exception = Some(SimulationException::Exited);
+            return;
         }
 
         let idx: usize = address.try_into().unwrap();
@@ -330,3 +351,38 @@ impl<T> SimulatorHandler<T> {
 
 // For each function in [`SailImpl`], we must declare a C function as external function
 pub static SIM_HANDLE: SimulatorHandler<Simulator> = SimulatorHandler::new();
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct LastRegState<const N: usize> {
+    states: [Option<MarchBits>; N],
+}
+
+impl<const N: usize> LastRegState<N> {
+    fn new() -> Self {
+        Self { states: [None; N] }
+    }
+
+    fn update(&mut self, new_state: &[MarchBits; N]) -> Vec<(usize, MarchBits)> {
+        let diff: Vec<(usize, MarchBits)> = new_state
+            .iter()
+            .enumerate()
+            .flat_map(|(i, &reg_val)| {
+                if let Some(val) = self.states[i] {
+                    if val == reg_val {
+                        None
+                    } else {
+                        Some((i, reg_val))
+                    }
+                } else {
+                    Some((i, reg_val))
+                }
+            })
+            .collect();
+
+        diff.iter().for_each(|(i, val)| {
+            self.states[*i] = Some(*val);
+        });
+
+        diff
+    }
+}

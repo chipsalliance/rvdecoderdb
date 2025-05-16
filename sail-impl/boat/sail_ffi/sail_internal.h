@@ -11,3 +11,5 @@ void model_init(void);
 MarchBits zset_pc(MarchBits pc);
 
 MarchBits zPC;
+
+MarchBits zread_GPR(MarchBits register_index);

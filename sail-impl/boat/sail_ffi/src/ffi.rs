@@ -1,4 +1,5 @@
-use crate::model::{zPC, zset_pc, MarchBits, Unit, SAIL_UNIT};
+use crate::model;
+use crate::model::{MarchBits, Unit, SAIL_UNIT};
 use crate::simulator::SIM_HANDLE;
 use std::ffi::{c_char, CStr};
 use tracing::{event, Level};
@@ -7,13 +8,8 @@ use tracing::{event, Level};
 /// user knows the side effect of this function.
 pub(crate) unsafe fn reset_vector(entry: u64) {
     unsafe {
-        zset_pc(entry);
+        model::zset_pc(entry);
     }
-}
-
-/// `get_pc` is the current value of Sail model internal `PC` register.
-pub(crate) fn get_pc() -> MarchBits {
-    unsafe { zPC }
 }
 
 #[unsafe(no_mangle)]
@@ -366,4 +362,20 @@ unsafe extern "C" fn get_resetval_stval(_: Unit) -> u64 {
 #[unsafe(no_mangle)]
 unsafe extern "C" fn get_resetval_medeleg(_: Unit) -> u64 {
     0
+}
+
+/// `get_pc` is the current value of Sail model internal `PC` register.
+pub(crate) fn get_pc() -> MarchBits {
+    unsafe { model::zPC }
+}
+
+/// [`read_register`] is the value store in "x{reg_idx}" register. Error bail out when register
+/// index larger than 31.
+///
+// TODO: emulator needs to know current march information and check register index based on that
+// information.
+pub(crate) fn read_register(reg_idx: u8) -> u64 {
+    assert!(reg_idx < 32);
+
+    unsafe { model::zread_GPR(reg_idx.into()) }
 }
