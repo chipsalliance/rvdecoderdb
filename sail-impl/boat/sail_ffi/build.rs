@@ -17,7 +17,7 @@ fn main() {
     println!("cargo::rerun-if-env-changed=GMP_LIB_DIR");
 
     let bindings = bindgen::Builder::default()
-        .header("sail_expose.h")
+        .header("sail_internal.h")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()
         .expect("Unable to generate bindings for file sail_expose.h");
@@ -25,7 +25,7 @@ fn main() {
     // Write the bindings to the $OUT_DIR/bindings.rs file.
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
-        .write_to_file(out_path.join("sail_expose.rs"))
+        .write_to_file(out_path.join("sail_internal.rs"))
         .expect("Couldn't write bindings!");
     println!("cargo::rerun-if-changed=sail_expose.h");
 }

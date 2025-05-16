@@ -16,17 +16,17 @@ register PC : XLENBITS
 
 val set_pc : XLENBITS -> unit
 function set_pc(pc) = {
-  PC = pc
+  PC = pc;
 }
 
 val tick_pc_with : int -> unit
 function tick_pc_with(i) = {
-  set_pc(PC + i)
+  set_pc(PC + i);
 }
 
 val tick_pc : unit -> unit
 function tick_pc() = {
-  tick_pc_with(4)
+  tick_pc_with(4);
 }
 
 // GPR

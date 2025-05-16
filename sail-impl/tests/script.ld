@@ -2,14 +2,12 @@ OUTPUT_ARCH(riscv)
 ENTRY(_start)
 
 MEMORY {
-  SCALAR (RWX) : ORIGIN = 0x20000000, LENGTH = 512M /* put first to set it as default */
-  MMIO   (RW)  : ORIGIN = 0x00000000, LENGTH = 512M
-  HEAP   (RW)  : ORIGIN = 0x40000000, LENGTH = 256M
-  SRAM   (RW)  : ORIGIN = 0x60000000, LENGTH = 256M
+  SRAM   (RWX) : ORIGIN = 0x20000000, LENGTH = 512M /* put first to set it as default */
+  MMIO   (RW)  : ORIGIN = 0x10000000, LENGTH = 512M
 }
 
 SECTIONS {
-  . = ORIGIN(SCALAR);
+  . = ORIGIN(SRAM);
   .text           : { *(.text .text.*) }
   . = ALIGN(0x1000);
 
@@ -24,12 +22,9 @@ SECTIONS {
 
   .bss            : { *(.bss .bss.*) }
   _end = .; PROVIDE (end = .);
+  . = ALIGN(0x1000);
 
-  . = ORIGIN(SRAM);
-  .vdata : { *(.vdata .vdata.*) } >SRAM
+  __heapbegin = .;
 
-  .vbss (TYPE = SHT_NOBITS) : { *(.vbss .vbss.*) } >SRAM
-
-  __stacktop = ORIGIN(SCALAR) + LENGTH(SCALAR);  /* put stack on the top of SCALAR */
-  __heapbegin = ORIGIN(HEAP);  /* put heap on the begin of DDR */
+  __stacktop = ORIGIN(SRAM) + LENGTH(SRAM);
 }

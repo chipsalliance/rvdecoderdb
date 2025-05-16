@@ -37,6 +37,8 @@ let
         cargoLock = {
           lockFile = ./Cargo.lock;
         };
+
+        meta.mainProgram = "boat";
       };
     in
     self;

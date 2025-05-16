@@ -1,10 +1,72 @@
-use crate::sail_impl::{MarchBits, SailImpl, SailUnit, SAIL_UNIT};
-use hex;
-use std::ffi::{c_char, CStr};
+use crate::model::{MarchBits, SAIL_UNIT};
+
 use std::io::Read;
 use std::sync::Mutex;
+use thiserror::Error;
+use tracing::{event, Level};
 use xmas_elf::program::{ProgramHeader, Type};
 use xmas_elf::{header, ElfFile};
+
+#[derive(Error, Debug, Clone)]
+pub enum SimulationException {
+    #[error("fail to fetch instruction")]
+    InstructionFetch,
+    #[error("Same instruction occur too many time")]
+    InfiniteInstruction,
+    #[error("simulator exited")]
+    Exited,
+}
+
+pub struct SimulatorParams {
+    memory_size: usize,
+    max_same_instruction: u8,
+    elf_path: std::path::PathBuf,
+}
+
+impl SimulatorParams {
+    pub fn to_sim_handle(
+        memory_size: usize,
+        max_same_instruction: u8,
+        elf_path: impl AsRef<std::path::Path>,
+    ) -> &'static SimulatorHandler<Simulator> {
+        Self {
+            memory_size,
+            max_same_instruction,
+            elf_path: elf_path.as_ref().into(),
+        }
+        .into()
+    }
+}
+
+impl From<SimulatorParams> for &SimulatorHandler<Simulator> {
+    fn from(params: SimulatorParams) -> Self {
+        let mut sim = Simulator {
+            memory: vec![0u8; params.memory_size],
+            instruction_count: 0,
+            step_count: 0,
+            fetch_count: 0,
+            is_reset: true,
+            exception: None,
+            last_instruction: 0,
+            last_instruction_met_count: 0,
+            max_same_instruction: params.max_same_instruction,
+        };
+
+        unsafe {
+            crate::model::model_init();
+        }
+
+        let entry = sim.load_elf(params.elf_path);
+
+        unsafe {
+            Simulator::reset_vector(entry);
+        }
+
+        SIM_HANDLE.init(|| sim);
+
+        &SIM_HANDLE
+    }
+}
 
 pub struct Simulator {
     memory: Vec<u8>,
@@ -12,40 +74,24 @@ pub struct Simulator {
     fetch_count: u64,
     step_count: u64,
     is_reset: bool,
-    finished: bool,
+    exception: Option<SimulationException>,
+    last_instruction: u64,
+    last_instruction_met_count: u8,
+    max_same_instruction: u8,
 }
 
 impl Simulator {
-    // TODO: replace this with a builder
-    pub fn new(memory_size: usize, elf_path: &str) -> Self {
-        let mut sim = Self {
-            memory: vec![0u8; memory_size],
-            instruction_count: 0,
-            step_count: 0,
-            fetch_count: 0,
-            is_reset: true,
-            finished: false,
-        };
+    // We can't use step here cuz the Simulator is always used in a Mutex lock, multiple simulator
+    // call at the same time will lead to dead lock.
+    pub fn check_step(&mut self) -> Result<(), SimulationException> {
+        event!(
+            Level::TRACE,
+            pc = format!("{:#x}", crate::ffi::get_pc()),
+            "current state of register",
+        );
 
-        println!("[sail] init module");
-
-        unsafe {
-            crate::ffi::model_init();
-        }
-
-        println!("[sail] load elf");
-        let entry = Self::load_elf(elf_path, &mut sim.memory).unwrap();
-
-        println!("[sail] reset vector to {:#x}", entry);
-        crate::ffi::reset_vector(entry);
-
-        sim
-    }
-
-    pub fn check_step(&mut self) -> Result<(), ()> {
-        if self.finished {
-            // TODO: concrete error
-            return Err(());
+        if let Some(exception) = &self.exception {
+            return Err(exception.clone());
         }
 
         self.instruction_count += 1;
@@ -54,18 +100,32 @@ impl Simulator {
         Ok(())
     }
 
-    // TODO: Eliminate all the unwrap
-    fn load_elf(fname: &str, mem: &mut [u8]) -> Result<u64, ()> {
-        let mut file = std::fs::File::open(fname).unwrap();
-        let mut buffer = Vec::new();
-        file.read_to_end(&mut buffer).unwrap();
+    pub unsafe fn reset_vector(addr: MarchBits) {
+        event!(Level::TRACE, "reset_vector: addr={:#x}", addr);
+        unsafe { crate::ffi::reset_vector(addr) };
+    }
 
-        let elf_file = ElfFile::new(&buffer).unwrap();
+    /// `step` drive the Sail model to fetch and execute instruction once.
+    pub unsafe fn step() {
+        unsafe { crate::model::zstep(SAIL_UNIT) };
+    }
+
+    pub fn load_elf<P: AsRef<std::path::Path>>(&mut self, fname: P) -> MarchBits {
+        let mut file = std::fs::File::open(fname)
+            .unwrap_or_else(|err| panic!("fail open ELF file to read: {err}"));
+        let mut buffer = Vec::new();
+        file.read_to_end(&mut buffer).expect(
+            "fail reading elf file to memory, maybe a broken file system or file too large",
+        );
+
+        let elf_file =
+            ElfFile::new(&buffer).unwrap_or_else(|err| panic!("fail serializing ELF file: {err}"));
 
         let header = elf_file.header;
-        assert_eq!(header.pt2.machine().as_machine(), header::Machine::RISC_V);
+        if header.pt2.machine().as_machine() != header::Machine::RISC_V {
+            panic!("ELF is not built for RISC-V")
+        }
 
-        // TODO: multi arch support?
         for ph in elf_file.program_iter() {
             if let ProgramHeader::Ph64(ph) = ph {
                 if ph.get_type() == Ok(Type::Load) {
@@ -75,7 +135,7 @@ impl Simulator {
 
                     let slice = &buffer[offset..offset + size];
 
-                    let dst: &mut _ = &mut mem[addr..addr + size];
+                    let dst: &mut _ = &mut self.memory[addr..addr + size];
                     for (i, byte) in slice.iter().enumerate() {
                         dst[i] = *byte;
                     }
@@ -83,79 +143,107 @@ impl Simulator {
             }
         }
 
-        Ok(header.pt2.entry_point())
+        header.pt2.entry_point()
     }
-}
 
-impl SailImpl for Simulator {
-    fn inst_fetch(&mut self, pc: MarchBits) -> MarchBits {
-        let idx: usize = pc.try_into().unwrap();
-        // TODO: user friendly bound check
-        let mut inst = [0u8; 4];
-        inst.copy_from_slice(&self.memory[idx..idx + 4]);
+    pub(crate) fn inst_fetch(&mut self, pc: MarchBits) -> MarchBits {
+        let inst: MarchBits = u32::from_le_bytes(self.phy_readmem(pc)).into();
         self.fetch_count += 1;
-        // TODO: use trace logging to control output verbosity
-        println!(
-            "[sail] current PC {:#x}, x1: {:#x} x2: {:#x} s0: {:#x}",
-            unsafe { crate::ffi::zPC },
-            unsafe { crate::ffi::zx1 },
-            unsafe { crate::ffi::zx2 },
-            unsafe { crate::ffi::zx8 }
-        );
-        println!(
-            "[sail] returning instruction {}",
-            hex::encode(inst.into_iter().rev().collect::<Vec<u8>>())
-        );
-        // TODO: optional enable debug trace
-        // std::thread::sleep(std::time::Duration::from_millis(300));
-        let inst: MarchBits = u32::from_le_bytes(inst).into();
+
+        if inst == self.last_instruction {
+            self.last_instruction_met_count += 1;
+        } else {
+            self.last_instruction_met_count = 0;
+        }
+
+        if self.last_instruction_met_count > self.max_same_instruction {
+            self.exception = Some(SimulationException::InfiniteInstruction);
+        }
+
+        self.last_instruction = inst;
+
         // TODO: instruction valid should be determine at Sail side.
         if inst == 0 {
             panic!("[sail] instruction fetch fail with zero data")
         }
+
+        event!(Level::TRACE, "instruction fetched: encoding={:#x}", inst);
+
         inst
     }
 
-    ///! [`readmem`] will always read a whole word. The result will be masked at Sail side.
-    //
-    // TODO:
-    // * this simulator doesn't support TLB yet, so we left SATP unhandle.
-    // * we should not always run lw here, Sail side should give us mask and length info
-    fn readmem(&self, address: u64, _satp: u64) -> u64 {
-        let idx: usize = address.try_into().unwrap();
-        // TODO: user friendly bound check
-        let mut data = [0u8; 8];
-        data.copy_from_slice(&self.memory[idx..idx + 8]);
-        u64::from_le_bytes(data)
+    /// [`phy_readmem`] is `N` length u8 array starting from `address`.
+    ///
+    /// [`phy_readmem`] will panic in following circumstance:
+    ///   * if the u64 `address` fail convert into usize;
+    ///   * if `address` larger than memory length (OOM);
+    ///   * if `address` plus `N` offset larger than memory length (OOM);
+    pub(crate) fn phy_readmem<const N: usize>(&self, address: u64) -> [u8; N] {
+        let idx: usize = address.try_into().unwrap_or_else(|_| {
+            panic!(
+                "phy_readmem: internal error occur: fail to convert address {} to usize type",
+                address
+            )
+        });
+        let mut data = [0u8; N];
+        data.copy_from_slice(&self.memory[idx..idx + N]);
+
+        event!(
+            Level::TRACE,
+            "read {} bytes from physical memory address: {:#x}",
+            N,
+            address
+        );
+
+        data
     }
 
-    // NOTE! no-op for now, but we can add functionality for tracing fence
-    fn fence_i(&self, _: u16, _: u16) -> SailUnit {
-        SAIL_UNIT
+    pub(crate) fn fence_i(&self, _: u16, _: u16) -> () {
+        event!(Level::TRACE, "fence_i called");
     }
 
-    // TODO: no TLB support yet
-    fn writemem(&mut self, address: u64, src: u64, bytes: u64, _satp: u64) -> SailUnit {
-        const EXIT_ADDR: u64 = 0x10000000;
-        const EXIT_CODE: u64 = 0xdeadbeef;
+    /// [`phy_write_mem`] write each byte of `value` in little endian order to `address` at
+    /// internal physical memory.
+    ///
+    /// This function will panic in following circumstance:
+    ///   * fail converting u64 `address` to usize
+    ///   * index overflow
+    pub(crate) fn phy_write_mem<T, const N: usize>(&mut self, address: u64, value: T) -> ()
+    where
+        T: num::ToPrimitive
+            + num::traits::ToBytes<Bytes = [u8; N]>
+            + PartialEq
+            + Eq
+            + std::fmt::LowerHex,
+    {
+        event!(
+            Level::TRACE,
+            "write {} bytes data {:#x} from physical memory address: {:#x}",
+            N,
+            value,
+            address
+        );
 
-        if address == EXIT_ADDR && src == EXIT_CODE {
-            println!("Exit address got written, exit simulator");
-            self.finished = true;
-            return SAIL_UNIT;
+        if N == std::mem::size_of::<u32>() {
+            const EXIT_ADDR: u64 = 0x10000000;
+            const EXIT_CODE: u32 = 0xdeadbeef;
+
+            // we can safely unwrap here since we already type check the size of input `N`
+            if address == EXIT_ADDR && value.to_u32().unwrap() == EXIT_CODE {
+                event!(Level::INFO, "exit address got written, exit simulator");
+                self.exception = Some(SimulationException::Exited);
+                return;
+            }
         }
 
         let idx: usize = address.try_into().unwrap();
-        let data = src.to_le_bytes();
-        let bytes_count: usize = bytes.try_into().unwrap();
-        for i in 0..bytes_count {
+        let data = value.to_le_bytes();
+        for i in 0..N {
             self.memory[idx + i] = data[i];
         }
-
-        SAIL_UNIT
     }
 
-    fn is_reset(&mut self, _: SailUnit) -> bool {
+    pub(crate) fn is_reset(&mut self) -> bool {
         if self.is_reset {
             self.is_reset = false;
             true
@@ -164,23 +252,31 @@ impl SailImpl for Simulator {
         }
     }
 
-    fn get_exception(&self, _: SailUnit) -> u64 {
+    pub(crate) fn get_exception(&self) -> u64 {
         0x00000000
     }
 
-    fn exception_raised(&self, _: SailUnit) -> bool {
+    pub(crate) fn exception_raised(&self) -> bool {
         false
+    }
+
+    pub fn print_statistic(&self) {
+        event!(
+            Level::INFO,
+            instruction_count = self.instruction_count,
+            fetch_count = self.fetch_count,
+            step_count = self.step_count,
+            exception = ?self.exception,
+            "statistic"
+        )
     }
 }
 
-pub struct SimulatorHandler<T>
-where
-    T: SailImpl,
-{
+pub struct SimulatorHandler<T> {
     simulator: Mutex<Option<T>>,
 }
 
-impl<T: SailImpl> SimulatorHandler<T> {
+impl<T> SimulatorHandler<T> {
     pub const fn new() -> Self {
         Self {
             simulator: Mutex::new(None),
@@ -189,7 +285,10 @@ impl<T: SailImpl> SimulatorHandler<T> {
 
     #[track_caller]
     pub fn init(&self, init_fn: impl FnOnce() -> T) {
-        let mut sim = self.simulator.lock().unwrap();
+        let mut sim = self
+            .simulator
+            .lock()
+            .expect("fail fetch lock when initializing the global simulator");
         if sim.is_some() {
             panic!("simulator initialized twice!");
         }
@@ -198,7 +297,10 @@ impl<T: SailImpl> SimulatorHandler<T> {
 
     #[track_caller]
     pub fn with<R>(&self, f: impl FnOnce(&mut T) -> R) -> R {
-        let mut sim = self.simulator.lock().unwrap();
+        let mut sim = self
+            .simulator
+            .lock()
+            .expect("fail fetch lock when referencing global simulator");
         let sim = sim.as_mut().expect("simulator is not initialized");
         f(sim)
     }
@@ -215,9 +317,12 @@ impl<T: SailImpl> SimulatorHandler<T> {
 
     #[track_caller]
     pub fn dispose(&self) {
-        let mut core = self.simulator.lock().unwrap();
+        let mut core = self
+            .simulator
+            .lock()
+            .expect("fail fetch lock when disposing");
         if core.is_none() {
-            panic!("CoreHandle is not initialized");
+            panic!("simulator is not initialized");
         }
         *core = None;
     }
@@ -225,313 +330,3 @@ impl<T: SailImpl> SimulatorHandler<T> {
 
 // For each function in [`SailImpl`], we must declare a C function as external function
 pub static SIM_HANDLE: SimulatorHandler<Simulator> = SimulatorHandler::new();
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn inst_fetch(pc: MarchBits) -> MarchBits {
-    SIM_HANDLE.with(|core| core.inst_fetch(pc))
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn readmem(address: u64, satp: u64) -> u64 {
-    SIM_HANDLE.with(|core| core.readmem(address, satp))
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn writemem(address: u64, data: u64, bytes: u64, satp: u64) -> SailUnit {
-    SIM_HANDLE.with(|core| core.writemem(address, data, bytes, satp))
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn exception_raised(arg1: SailUnit) -> bool {
-    SIM_HANDLE.with(|core| core.exception_raised(arg1))
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_exception(arg1: SailUnit) -> u64 {
-    SIM_HANDLE.with(|core| core.get_exception(arg1))
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn fence_i(pred: u16, succ: u16) -> SailUnit {
-    SIM_HANDLE.with(|core| core.fence_i(pred, succ))
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn is_reset(arg1: SailUnit) -> bool {
-    SIM_HANDLE.with(|core| core.is_reset(arg1))
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn print_instr(s: *const c_char) -> SailUnit {
-    // TODO: We should use logging functionality here, to be able to disable log when unnecessary
-    unsafe {
-        let sail_str = CStr::from_ptr(s);
-        eprintln!("{}", sail_str.to_string_lossy());
-    };
-    SAIL_UNIT
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn print_reg(s: *const c_char) -> SailUnit {
-    // TODO: We should use logging functionality here, to be able to disable log when unnecessary
-    unsafe {
-        let sail_str = CStr::from_ptr(s);
-        eprintln!("{}", sail_str.to_string_lossy());
-    };
-    SAIL_UNIT
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn print_platform(s: *const c_char) -> SailUnit {
-    // TODO: We should use logging functionality here, to be able to disable log when unnecessary
-    unsafe {
-        let sail_str = CStr::from_ptr(s);
-        eprintln!("{}", sail_str.to_string_lossy());
-    };
-    SAIL_UNIT
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x0(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x1(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x2(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x3(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x4(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x5(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x6(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x7(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x8(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x9(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x10(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x11(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x12(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x13(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x14(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x15(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x16(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x17(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x18(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x19(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x20(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x21(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x22(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x23(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x24(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x25(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x26(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x27(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x28(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x29(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x30(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_x31(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_mie(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_mip(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_mideleg(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_mstatus(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_mtvec(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_mcause(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_menvcfg(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_senvcfg(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_satp(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_misa(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_mtval(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_mepc(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_stvec(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_sepc(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_scause(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_stval(_: SailUnit) -> u64 {
-    0
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn get_resetval_medeleg(_: SailUnit) -> u64 {
-    0
-}

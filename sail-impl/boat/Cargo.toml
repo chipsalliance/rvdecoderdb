@@ -8,3 +8,5 @@ edition = "2024"
 
 [workspace.dependencies]
 hex = "0.4.3"
+thiserror = "2"
+tracing = "0.1.41"
