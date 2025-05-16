@@ -1,4 +1,36 @@
-= Development Notes
+#import "./style.typ": *
+
+#show: project.with(
+  doc-category: "Manual",
+  doc-title: "Sail RISC-V Coding Guidance",
+  author: "Jiongjia Lu",
+  affiliation: "Chipsalliance T1 Team",
+)
+#let projectName = "This project"
+
+= Abstract
+
+#projectName is a RISC-V ISA model implementation using Sail. We want the
+flexibility to opt-in a new instruction set, and gain maintainability from
+simple design, which is not available from sail-riscv and spike now.
+
+This document aims to help developers understand the example Sail model
+implementation and act as a guidance for how to fix bugs, add new instruction,
+add new architecture, or create a new model based on this project. For
+developers who don't understand Sail and Sail toolchains, we also provide some
+additional document upon official manual.
+
+Currently the example project support `rv64gc`.
+
+= Introduction
+
+== How to build this document
+
+Typst 0.13.1 is required.
+
+```bash
+typst compile ./docs/dev.typ ./docs/rendered.pdf
+```
 
 == Gloassary
 
@@ -11,48 +43,136 @@
   [sailcodegen], [A Scala implemented Sail code generator],
 )
 
-== Architecture
+== Designs
 
-This project use _sail_ to write RISC-V ISA representation. And use the _sail_
-toolchain to generate C codes that can be used to interact with the RISC-V ISA
-model.
-All the _sail_ implementation now stay in `csr/`, `inst/`, `rvcore/` folders.
+The #projectName project employs a distinct methodology compared to standard
+Sail projects. To enhance maintainability, the Instruction Set Architecture
+(ISA) model definition is segmented into multiple code snippets. A CLI tool for
+code generation is then utilized to assemble the complete Sail code from these
+snippets. This approach allows each instruction to be defined in an individual
+file, thereby creating a singular, reviewable unit of code.
 
-For architecture states, there are `sailcodegen` CLI help generating all
-required _sail_ code based on current _sail_impl_ `march` information.
-This information is provided by `sail-impl-meta.json` at the root directory of
-a _sail_impl_.
+All architectural states are consolidated and managed within a separate,
+dedicated file. We have a guiding principle that each Sail model should
+exclusively define architectural states. Any interactions with hardware or the
+underlying system are exposed through an external C Application Programming
+Interface (API). For code readability, these hardware interactions, such as
+memory read and write operations, must be declared in a designated Sail file,
+accompanied by a corresponding C header file.
 
-Currently Emulator are written using Rust programming language.
+We advocate for minimizing the amount of C code. The C code should primarily
+function as an intermediary layer, connecting the Sail ISA model with the
+emulator. Consequently, developers should make every effort to avoid creating
+and linking additional C libraries.
 
-== Implementation Required at Emulator side
+The explicitly defined C API enables the use of nearly any programming language
+that supports a Foreign Function Interface (FFI) to implement hardware behaviors
+not defined in the ISA specification. For #projectName, the Rust programming
+language was selected to develop the emulator. This choice was driven by Rust's
+design simplicity and the readability of its code. Furthermore, the Rust
+community provides robust compiler toolchains, which helps to reduce the time
+spent on configuring and managing the build system.
 
-Each _sail_impl_ should deliver a `sail_impl.h` file.
-This file has two main usage: help compiler found declaration so that we can
-pre-compile Sail model as a static library, and act as a specification for
-emulator side to know what functions are required by _Sail_ model but missing
-implementation.
+= Codegen CLI
 
-View details in `sail_impl.h`.
 
-- memory interaction
-- reset
-- instruction fetch
-- registers and CSR initialization
-- de-init
+
+= Model
+This section covers detail implementation and coding guidance for a Sail ISA model.
+
+== FFI Interface
+The model implementation is required to provide a C header file
+named "model_prelude.h". All external functions necessary for the model's
+operation should be defined within this file. This serves as a clear reference
+for emulator developers, informing them of the specific APIs that the Sail model
+relies upon and that, consequently, need to be implemented on the emulator side.
+
+== "Global" functions
+Each instruction description file is a lonely individual file. Since these instruction description
+file will finally be assembled into one Sail file, there all have corresponding context.
+
+This section instruct you all the possible context when defining a instruction.
+
+- All the library functions: TODO: jump to library section
+- Registers defined at riscv-opcodes TODO: explain possible register name trim
+
+== Files
+Instruction behavior definition files are separated by instruction name, and
+grouped by their corresponding instruction sets. The instruction sets group
+rule follows riscv/riscv-opcodes. For example, load word instruction `lw`
+should be placed under `rv_i` directory, and load double word instruction `ld`
+shoule be placed under `rv64_i` directory.
+
+== Provided library functions
+
+=== Memory Read/Write API
+Following are required memory operation that should be implemented at emulator side:
+#table(
+  columns: 3,
+  [*Name*], [*Type*], [*Description*],
+  [`phy_read_byte`],
+  [`bits(64) -> bits(8)`],
+  [`[phy_read_byte address]` is the value of the byte at physical `[address]`],
+
+  [`phy_read_half_word`],
+  [`bits(64) -> bits(16)`],
+  [`[phy_read_half address]` is two bytes value starting at physical `[address]`],
+
+  [`phy_read_word`],
+  [`bits(64) -> bits(32)`],
+  [`[phy_read_word address]` is word length value starting at physical `[address]`],
+
+  [`phy_read_double_word`],
+  [`bits(64) -> bits(64)`],
+  [`[phy_read_double_word address]` is the 64-bit value starting at physical `[address]`],
+
+  [`phy_write_byte`],
+  [`bits(64) -> bits(8) -> unit`],
+  [`[phy_write_byte address value]` write byte `[value]` to physical `[address]`],
+
+  [`phy_write_half_word`],
+  [`bits(64) -> bits(16) -> unit`],
+  [`[phy_write_half address value]` write two bytes value to physical `[address]`],
+
+  [`phy_write_word`],
+  [`bits(64) -> bits(32) -> unit`],
+  [`[phy_write_word address value]` write word length value to physical `[address]`],
+
+  [`phy_write_double_word`],
+  [`bits(64) -> bits(64) -> unit`],
+  [`[phy_write_double_word address value]` write 64-bit value to physical `[address]`],
+)
+
+= Emulator
+== Development notes
+Developers can setup Rust development environment using command `nix develop .#sail-riscv.boat.emulator.dev`.
 
 == Sail FFI
 
-To init a Sail model, drive the Sail model to consume each instruction, read model stats,
-we will need to manually call the generated functions. These are function that
-already has implementation on Sail side, so all we need to do is to write a
-Rust FFI crate for it. Each model should provide a `sail_expose.h` C header file
-consumed by _rust-bindgen_. This header file will act as a API level language
-bridge across C and emulator side, specify and limit what functionality
-emulator side can and should use.
+To initialize a Sail model, drive it to process each instruction, and read model
+statistics, it is necessary to call generated functions and access Sail values
+at runtime from the emulator.
 
-== Current Issues
+However, directly accessing C values from Rust can introduce multiple safety
+issues and complicate side-effect management.
 
-- Sail header contains 128bit integer which is not FFI-safe
-- How to write memory? How to allocate and distribute memory address space?
-- writemem argument should not be int64_t, it should be a bit array.
+To establish clear referencing and limitations, each emulator implementation
+must provide a sail_prelude.h C header file. This header file will function as
+an API-level language bridge between C and the emulator, specifying and
+restricting the functionalities the emulator side can and should utilize. All
+exposed functions and values must be kept private within a Rust module.
+Developers are required to manually write corresponding wrapper functions for
+all these FFI values and functions, rather than exposing them directly outside
+the Rust crate.
+
+=== Required value from Sail
+
+#table(
+  columns: 3,
+  [*Signature*], [*Type*], [*Notes*],
+  [`unit`], [value type], [Unit type defined at Sail side],
+  [`march_bits`], [value type], [Machine word length],
+  [`zstep :: unit -> unit`], [function type], [Run one step for fetch-decode-execute loop],
+  [`model_init :: void -> void`], [function type], [Initialize all registers],
+)
+
