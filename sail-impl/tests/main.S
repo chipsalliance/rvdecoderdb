@@ -1,4 +1,20 @@
     .globl _start
+
+do_tohost:
+    addi    sp,sp,-32
+    sd      ra,24(sp)
+    sd      s0,16(sp)
+    addi    s0,sp,32
+    sd      a0,-24(s0)
+    lui     a5,%hi(tohost)
+    ld      a4,-24(s0)
+    sd      a4,%lo(tohost)(a5)
+    nop
+    ld      ra,24(sp)
+    ld      s0,16(sp)
+    addi    sp,sp,32
+    jr      ra
+
 _start:
     li x1, 0
     li x2, 0
@@ -38,10 +54,8 @@ _start:
     call test
 
     // exit
-    li x1, 0x10000000
-    li x2, 0xdeadbeef
-    sw x2, 0(x1)
-    j .
+    li a0, 1
+    call do_tohost
 
     .p2align 2
 

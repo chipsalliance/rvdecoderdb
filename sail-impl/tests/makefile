@@ -2,7 +2,7 @@ RISCV_PREFIX := riscv64-linux-gnu-
 
 CC ?= $(RISCV_PREFIX)gcc
 OBJDUMP ?= $(RISCV_PREFIX)objdump
-CFLAGS := -O0 -march=rv64i -mabi=lp64 -nostdinc -nostdlib -fno-PIC -mno-relax -static
+CFLAGS := -O0 -march=rv64i -mabi=lp64 -nostdlib -fno-PIC -mno-relax -static
 
 BUILD := build
 

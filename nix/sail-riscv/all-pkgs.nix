@@ -43,6 +43,6 @@ lib.makeScope newScope (sailRiscvPkgs: {
   boat = sailRiscvPkgs.callPackage ../../sail-impl/boat/package.nix { };
 
   test-elf = sailRiscvPkgs.callPackage ../../sail-impl/tests/package.nix {
-    rv64-stdenv = pkgsCross.riscv64.stdenv;
+    rv64-stdenv = pkgsCross.riscv64-embedded.stdenv;
   };
 })
