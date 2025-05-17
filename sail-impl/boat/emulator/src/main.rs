@@ -18,6 +18,9 @@ struct Args {
     /// Exit when same instruction occur N time
     #[arg(long, default_value_t = 50)]
     max_same_instruction: u8,
+
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    verbose: u8,
 }
 
 fn main() {
@@ -30,7 +33,11 @@ fn main() {
         .with_env_filter(
             EnvFilter::builder()
                 .with_env_var("SAIL_EMU_LOG_LEVEL")
-                .with_default_directive(LevelFilter::INFO.into())
+                .with_default_directive(match args.verbose {
+                    0 => Level::INFO.into(),
+                    1 => Level::DEBUG.into(),
+                    _ => Level::TRACE.into(),
+                })
                 .from_env_lossy(),
         )
         .init();
