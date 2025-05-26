@@ -3,7 +3,7 @@ use sail_ffi::{SimulationException, Simulator, SimulatorParams};
 use std::fmt::Display;
 use std::str::FromStr;
 use tracing::{event, Level};
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
+use tracing_subscriber::{filter::LevelFilter, prelude::*, EnvFilter};
 
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
@@ -23,6 +23,9 @@ struct Args {
 
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
+
+    #[arg(short = 'o', long, default_value_t = String::from("./boat_emu.log"))]
+    output_log_path: String,
 }
 
 #[derive(Debug, Clone)]
@@ -95,14 +98,19 @@ impl FromStr for MemorySize {
     }
 }
 
-fn main() {
-    let args = Args::parse();
+fn setup_logging(args: &Args) {
+    let log_file = std::fs::File::create(&args.output_log_path)
+        .unwrap_or_else(|err| panic!("fail to create log file {}: {}", args.output_log_path, err));
+    let file_log_layer = tracing_subscriber::fmt::layer()
+        .json()
+        .with_writer(log_file)
+        .with_filter(LevelFilter::TRACE);
 
-    FmtSubscriber::builder()
+    let stdout_log_layer = tracing_subscriber::fmt::layer()
         .without_time()
         .with_ansi(true)
         .with_line_number(false)
-        .with_env_filter(
+        .with_filter(
             EnvFilter::builder()
                 .with_env_var("SAIL_EMU_LOG_LEVEL")
                 .with_default_directive(match args.verbose {
@@ -111,8 +119,18 @@ fn main() {
                     _ => Level::TRACE.into(),
                 })
                 .from_env_lossy(),
-        )
+        );
+
+    tracing_subscriber::registry()
+        .with(stdout_log_layer)
+        .with(file_log_layer)
         .init();
+}
+
+fn main() {
+    let args = Args::parse();
+
+    setup_logging(&args);
 
     let sim_handle = SimulatorParams::to_sim_handle(
         args.memory_size.to_usize(),

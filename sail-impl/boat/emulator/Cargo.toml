@@ -4,7 +4,8 @@ edition.workspace = true
 version.workspace = true
 
 [dependencies]
-clap = { version = "4.5.37", features = ["derive"] }
+hex = { workspace = true }
+clap = { workspace = true }
 sail_ffi = { path = "../sail_ffi" }
-tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+tracing-subscriber = { workspace = true }
 tracing = { workspace = true }

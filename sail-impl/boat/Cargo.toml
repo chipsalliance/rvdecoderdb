@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [ "sail_ffi", "emulator" ]
+members = [ "sail_ffi", "emulator", "difftest" ]
 
 [workspace.package]
 version = "0.1.0"
@@ -10,3 +10,5 @@ edition = "2024"
 hex = "0.4.3"
 thiserror = "2"
 tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json"] }
+clap = { version = "4.5.37", features = ["derive"] }
