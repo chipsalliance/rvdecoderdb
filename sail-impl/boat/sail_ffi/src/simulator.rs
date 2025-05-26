@@ -104,14 +104,22 @@ impl Simulator {
     pub fn check_step(&mut self) -> Result<(), SimulationException> {
         let updated = self.last_reg_state.update(&Self::regs_to_seq());
 
+        let t = crate::ffi::get_pc();
         let span = span!(
             Level::DEBUG,
-            ("check register"),
-            pc = format!("{:#x}", crate::ffi::get_pc()),
+            ("check arch states"),
+            pc = format!("{:#x}", t),
         );
         let _guard = span.enter();
-        updated.iter().for_each(|(name, val)| {
-            event!(Level::DEBUG, "x{}: {:#x}", name, val);
+        updated.iter().for_each(|(register_index, val)| {
+            event!(
+                Level::TRACE,
+                event_type = "arch_state",
+                action = "register_update",
+                pc = t,
+                reg_idx = register_index,
+                current_value = val
+            );
         });
 
         if let Some(exception) = &self.exception {
@@ -125,7 +133,7 @@ impl Simulator {
     }
 
     pub unsafe fn reset_vector(addr: MarchBits) {
-        event!(Level::TRACE, "reset_vector: addr={:#x}", addr);
+        event!(Level::DEBUG, "reset_vector: addr={:#x}", addr);
         unsafe { crate::ffi::reset_vector(addr) };
     }
 
@@ -191,7 +199,7 @@ impl Simulator {
             panic!("[sail] instruction fetch fail with zero data")
         }
 
-        event!(Level::TRACE, "instruction fetched: encoding={:#x}", inst);
+        event!(Level::DEBUG, "instruction fetched: encoding={:#x}", inst);
 
         inst
     }
@@ -214,6 +222,11 @@ impl Simulator {
 
         event!(
             Level::TRACE,
+            event_type = "physical_memory",
+            action = "read",
+            bytes = N,
+            address = address,
+            data = ?data,
             "read {} bytes from physical memory address: {:#x}",
             N,
             address
@@ -223,7 +236,7 @@ impl Simulator {
     }
 
     pub(crate) fn fence_i(&self, _: u16, _: u16) -> () {
-        event!(Level::TRACE, "fence_i called");
+        event!(Level::DEBUG, "fence_i called");
     }
 
     /// [`phy_write_mem`] write each byte of `value` in little endian order to `address` at
@@ -240,11 +253,15 @@ impl Simulator {
             + Eq
             + std::fmt::LowerHex,
     {
+        let hex_value = format!("{:#x}", value);
         event!(
             Level::TRACE,
-            "write {} bytes data {:#x} from physical memory address: {:#x}",
-            N,
-            value,
+            event_type = "physical_memory",
+            action = "write",
+            bytes = N,
+            address = address,
+            data = hex_value,
+            "write {N} bytes data {hex_value} from physical memory address: {:#x}",
             address
         );
 
