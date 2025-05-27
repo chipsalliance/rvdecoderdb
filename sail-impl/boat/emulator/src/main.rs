@@ -3,7 +3,7 @@ use sail_ffi::{SimulationException, Simulator, SimulatorParams};
 use std::fmt::Display;
 use std::str::FromStr;
 use tracing::{event, Level};
-use tracing_subscriber::{filter::LevelFilter, prelude::*, EnvFilter};
+use tracing_subscriber::{layer::Filter, prelude::*, EnvFilter};
 
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
@@ -24,7 +24,7 @@ struct Args {
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
 
-    #[arg(short = 'o', long, default_value_t = String::from("./boat_emu.log"))]
+    #[arg(short = 'o', long, default_value_t = String::from("./boat_trace_event.jsonl"))]
     output_log_path: String,
 }
 
@@ -98,14 +98,18 @@ impl FromStr for MemorySize {
     }
 }
 
-fn setup_logging(args: &Args) {
-    let log_file = std::fs::File::create(&args.output_log_path)
-        .unwrap_or_else(|err| panic!("fail to create log file {}: {}", args.output_log_path, err));
-    let file_log_layer = tracing_subscriber::fmt::layer()
-        .json()
-        .with_writer(log_file)
-        .with_filter(LevelFilter::TRACE);
+struct OnlyTrace;
+impl<S> Filter<S> for OnlyTrace {
+    fn enabled(
+        &self,
+        meta: &tracing::Metadata<'_>,
+        _: &tracing_subscriber::layer::Context<'_, S>,
+    ) -> bool {
+        *meta.level() == Level::TRACE
+    }
+}
 
+fn setup_logging(args: &Args) {
     let stdout_log_layer = tracing_subscriber::fmt::layer()
         .without_time()
         .with_ansi(true)
@@ -115,16 +119,28 @@ fn setup_logging(args: &Args) {
                 .with_env_var("SAIL_EMU_LOG_LEVEL")
                 .with_default_directive(match args.verbose {
                     0 => Level::INFO.into(),
-                    1 => Level::DEBUG.into(),
-                    _ => Level::TRACE.into(),
+                    _ => Level::DEBUG.into(),
                 })
                 .from_env_lossy(),
         );
+    let registry = tracing_subscriber::registry().with(stdout_log_layer);
 
-    tracing_subscriber::registry()
-        .with(stdout_log_layer)
-        .with(file_log_layer)
-        .init();
+    let json_log = if args.verbose > 1 {
+        let log_file = std::fs::File::create(&args.output_log_path).unwrap_or_else(|err| {
+            panic!("fail to create log file {}: {}", args.output_log_path, err)
+        });
+
+        let file_log_layer = tracing_subscriber::fmt::layer()
+            .json()
+            .with_writer(log_file)
+            .with_filter(OnlyTrace);
+
+        Some(file_log_layer)
+    } else {
+        None
+    };
+
+    registry.with(json_log).init();
 }
 
 fn main() {
