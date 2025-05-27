@@ -1,6 +1,6 @@
 use boat::{BoatEvent, BoatLog};
 use serde::Deserialize;
-use spike::SpikeLog;
+use spike::{SpikeLog, SpikeRegister};
 mod boat;
 mod spike;
 
@@ -58,8 +58,26 @@ fn diff(spike_log: &SpikeLog, boat_log: &BoatLog) -> DiffMeta {
     assert!(!boat_log.is_empty());
 
     let mut boat_log_cursor = 0;
+    let mut is_reset = false;
+
+    // spike contains vendored bootrom but doesn't provide a way to remove it.
+    // so we need to compares commit log from when the boat emulator run reset_vector
+    let reset_vector_addr = boat_log
+        .iter()
+        .find_map(|event| event.get_reset_vector())
+        .unwrap_or_else(|| {
+            unreachable!("reset_vector event not found");
+        });
 
     for spike_event in spike_log {
+        if !is_reset {
+            if spike_event.pc == reset_vector_addr {
+                is_reset = true;
+            } else {
+                continue;
+            }
+        }
+
         if spike_event.reg.is_empty() {
             continue;
         }
@@ -67,13 +85,8 @@ fn diff(spike_log: &SpikeLog, boat_log: &BoatLog) -> DiffMeta {
         let search_result = boat_log[boat_log_cursor..]
             .iter()
             .enumerate()
-            .find(|(i, event)| match event {
-                BoatEvent::ArchState {
-                    action: _,
-                    pc,
-                    reg_idx: _,
-                    current_value: _,
-                } => {
+            .filter(|(i, event)| match event {
+                BoatEvent::ArchState { pc, .. } => {
                     if *pc == spike_event.pc {
                         boat_log_cursor = *i;
                         true
@@ -82,9 +95,10 @@ fn diff(spike_log: &SpikeLog, boat_log: &BoatLog) -> DiffMeta {
                     }
                 }
                 _ => false,
-            });
+            })
+            .collect::<Vec<_>>();
 
-        if search_result.is_none() {
+        if search_result.is_empty() {
             let expect = spike_event
                 .reg
                 .iter()
@@ -96,10 +110,43 @@ fn diff(spike_log: &SpikeLog, boat_log: &BoatLog) -> DiffMeta {
                 })
                 .collect::<Vec<String>>()
                 .join("\n");
-            return DiffMeta::failed(format!(
-                "At PC={} spike have following actions which are not applied at boat side:\n\n{}",
-                spike_event.pc, expect
-            ));
+            return DiffMeta::failed(indoc::formatdoc! {"
+                At PC={:#018x} spike have following actions which are not applied at boat side:
+
+                Displaying error message: {}
+
+                Displaying Spike event dump:
+                {spike_event:#?}
+                ", spike_event.pc, expect
+            });
+        }
+
+        for (_, event) in search_result {
+            let BoatEvent::ArchState {
+                reg_idx, data, pc, ..
+            } = event
+            else {
+                unreachable!("we already filter at above")
+            };
+
+            let match_event = spike_event
+                .reg
+                .iter()
+                .find(|SpikeRegister { name, value }| {
+                    name.as_str() == format!("x{reg_idx}") && value == data
+                });
+
+            if match_event.is_none() {
+                return DiffMeta::failed(indoc::formatdoc! {"
+                    At PC={pc:#018x} boat write {data:#018x} to register x{reg_idx}, but this action was not found at spike side.
+
+                    Displaying Spike event dump:
+                    {spike_event:#?}
+
+                    Displaying Boat event dump:
+                    {event:#?}
+                "});
+            }
         }
     }
 

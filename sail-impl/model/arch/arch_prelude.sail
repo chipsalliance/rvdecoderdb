@@ -212,3 +212,6 @@ enum clause extension = Ext_Smcntrpmf
 
 val extensionEnabled : extension -> bool
 scattered function extensionEnabled
+
+// an external hook that get applied *before* register get written.
+val write_GPR_hook = pure "write_GPR_hook" : (regidx, XLENBITS) -> unit

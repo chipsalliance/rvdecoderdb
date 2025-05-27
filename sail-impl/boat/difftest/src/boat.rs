@@ -66,10 +66,21 @@ pub enum BoatEvent {
         action: String,
         pc: u64,
         reg_idx: u8,
-        current_value: u64,
+        data: u64,
     },
     #[serde(rename = "instruction_fetch")]
     InstructionFetch { data: u32 },
+    #[serde(rename = "reset_vector")]
+    ResetVector { new_addr: u64 },
+}
+
+impl BoatEvent {
+    pub fn get_reset_vector(&self) -> Option<u64> {
+        match self {
+            Self::ResetVector { new_addr } => Some(*new_addr),
+            _ => None,
+        }
+    }
 }
 
 #[test]

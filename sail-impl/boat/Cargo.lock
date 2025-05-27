@@ -182,6 +182,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "glob",
+ "indoc",
  "serde",
  "serde_json",
  "tracing",
@@ -228,6 +229,12 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
+name = "indoc"
+version = "2.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4c7245a08504955605670dbf141fceab975f15ca21570696aebe9d2e71576bd"
 
 [[package]]
 name = "is_terminal_polyfill"

@@ -369,13 +369,10 @@ pub(crate) fn get_pc() -> MarchBits {
     unsafe { model::zPC }
 }
 
-/// [`read_register`] is the value store in "x{reg_idx}" register. Error bail out when register
-/// index larger than 31.
-///
-// TODO: emulator needs to know current march information and check register index based on that
-// information.
-pub(crate) fn read_register(reg_idx: u8) -> u64 {
-    assert!(reg_idx < 32);
-
-    unsafe { model::zread_GPR(reg_idx.into()) }
+#[unsafe(no_mangle)]
+unsafe extern "C" fn write_GPR_hook(reg_idx: u8, data: u64) -> Unit {
+    SIM_HANDLE.with(|core| {
+        core.write_register(reg_idx, data);
+        SAIL_UNIT
+    })
 }

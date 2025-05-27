@@ -158,25 +158,32 @@ deserialize to corresponding data type.
 
 Current implementation contains following event type:
 
-- *physical_memory*
+=== physical_memory
 
 For "physical_memory" event type, current implmentation records following fields:
 
-  - action: a text value indicate current action to physical memory. Possible value: *"read"*, *"write"*.
-  - bytes: a integer value indicate the total bytes get operated on physical memory. Possible value: *1,2,4,8*.
-  - address: a 64-bit integer value indicate the start address of this action to the physical memory.
-  - data: a debug value in text indicating the value read from or write to the physical value.
-  - message: optional text value with human readable emulator status attached
+- action: a text value indicate current action to physical memory. Possible value: *"read"*, *"write"*.
+- bytes: a integer value indicate the total bytes get operated on physical memory. Possible value: *1,2,4,8*.
+- address: a 64-bit integer value indicate the start address of this action to the physical memory.
+- data: a debug value in text indicating the value read from or write to the physical value.
+- message: optional text value with human readable emulator status attached
 
-- *arch_state*
+=== arch_state
 
 For "arch_state" event type, current implementation records following fields:
 
-  - action: a text value indicate current action to architecture states. Possible value: *"register_update"*.
-  - pc: a 64-bit integer value indicate the current PC of this action.
-  - reg_idx: if current action is "register_update", `reg_idx` is a integer number represent the index of the changed register.
-  - current_value: if current action is "register_update", `current_value` is a 64-bit integer showing the current value in register.
-  - message: optional text value with human readable emulator status attached
+- action: a text value indicate current action to architecture states. Possible value: *"register_update"*.
+- pc: a 64-bit integer value indicate the current PC of this action.
+- reg_idx: if current action is "register_update", `reg_idx` is a integer number represent the index of the changed register.
+- data: if current action is "register_update", `data` is a 64-bit integer showing the data ready to be written to register.
+- message: optional text value with human readable emulator status attached
+
+=== reset_vector
+
+This event occurs when Sail model `PC` register get explicitly updated.
+For *reset_vector* event type, current implementation records following fields:
+
+- new_addr: a 64-bit integer value indicate the new PC.
 
 All event unrelated but useful for knowing `sail-ffi` running status shoule be logging with `Level::DEBUG`.
 

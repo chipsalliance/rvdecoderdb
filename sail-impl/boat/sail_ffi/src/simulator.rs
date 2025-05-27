@@ -3,7 +3,7 @@ use crate::model::{MarchBits, SAIL_UNIT};
 use std::io::Read;
 use std::sync::Mutex;
 use thiserror::Error;
-use tracing::{event, span, Level};
+use tracing::{event, Level};
 use xmas_elf::program::{ProgramHeader, Type};
 use xmas_elf::{header, ElfFile};
 
@@ -49,7 +49,7 @@ impl From<SimulatorParams> for &SimulatorHandler<Simulator> {
         let entry = sim.load_elf(params.elf_path);
 
         unsafe {
-            Simulator::reset_vector(entry);
+            sim.reset_vector(entry);
         }
 
         SIM_HANDLE.init(|| sim);
@@ -64,10 +64,10 @@ pub struct Simulator {
     statistic: Statistic,
     is_reset: bool,
     exception: Option<SimulationException>,
+
     last_instruction: u64,
     last_instruction_met_count: u8,
     max_same_instruction: u8,
-    last_reg_state: LastRegState<32>,
 }
 
 impl Simulator {
@@ -80,45 +80,13 @@ impl Simulator {
             exception: None,
             last_instruction: 0,
             last_instruction_met_count: 0,
-            last_reg_state: LastRegState::new(),
             max_same_instruction,
         }
-    }
-
-    fn regs_to_seq() -> [MarchBits; 32] {
-        use crate::ffi::read_register;
-        let mut reg_seq = [0; 32];
-        (0..32).into_iter().for_each(|i| {
-            reg_seq[i] = read_register(
-                i.try_into()
-                    .expect("fail converting usize to register index"),
-            )
-        });
-        reg_seq
     }
 
     // We can't use step here cuz the Simulator is always used in a Mutex lock, multiple simulator
     // call at the same time will lead to dead lock.
     pub fn check_step(&mut self) -> Result<(), SimulationException> {
-        let updated = self.last_reg_state.update(&Self::regs_to_seq());
-
-        let span = span!(
-            Level::DEBUG,
-            ("check arch states"),
-            pc = format!("{:#x}", self.pc),
-        );
-        let _guard = span.enter();
-        updated.iter().for_each(|(register_index, val)| {
-            event!(
-                Level::TRACE,
-                event_type = "arch_state",
-                action = "register_update",
-                pc = self.pc,
-                reg_idx = register_index,
-                current_value = val
-            );
-        });
-
         if let Some(exception) = &self.exception {
             return Err(exception.clone());
         }
@@ -130,9 +98,12 @@ impl Simulator {
         Ok(())
     }
 
-    pub unsafe fn reset_vector(addr: MarchBits) {
-        event!(Level::DEBUG, "reset_vector: addr={:#x}", addr);
+    pub unsafe fn reset_vector(&mut self, addr: MarchBits) {
         unsafe { crate::ffi::reset_vector(addr) };
+        self.pc = addr;
+
+        event!(Level::DEBUG, "reset vector addr to {:#018x}", addr);
+        event!(Level::TRACE, event_type = "reset_vector", new_addr = addr,);
     }
 
     /// `step` drive the Sail model to fetch and execute instruction once.
@@ -306,6 +277,17 @@ impl Simulator {
         self.statistic = Statistic::new();
         stat
     }
+
+    pub(crate) fn write_register(&self, reg_idx: u8, value: u64) {
+        event!(
+            Level::TRACE,
+            event_type = "arch_state",
+            action = "register_update",
+            pc = self.pc,
+            reg_idx = reg_idx,
+            data = value,
+        );
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -379,38 +361,3 @@ impl<T> SimulatorHandler<T> {
 
 // For each function in [`SailImpl`], we must declare a C function as external function
 pub static SIM_HANDLE: SimulatorHandler<Simulator> = SimulatorHandler::new();
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct LastRegState<const N: usize> {
-    states: [Option<MarchBits>; N],
-}
-
-impl<const N: usize> LastRegState<N> {
-    fn new() -> Self {
-        Self { states: [None; N] }
-    }
-
-    fn update(&mut self, new_state: &[MarchBits; N]) -> Vec<(usize, MarchBits)> {
-        let diff: Vec<(usize, MarchBits)> = new_state
-            .iter()
-            .enumerate()
-            .flat_map(|(i, &reg_val)| {
-                if let Some(val) = self.states[i] {
-                    if val == reg_val {
-                        None
-                    } else {
-                        Some((i, reg_val))
-                    }
-                } else {
-                    Some((i, reg_val))
-                }
-            })
-            .collect();
-
-        diff.iter().for_each(|(i, val)| {
-            self.states[*i] = Some(*val);
-        });
-
-        diff
-    }
-}

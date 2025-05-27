@@ -482,6 +482,7 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
     range.map { i =>
       s"""function clause read_GPR(0b${toBinaryString5(i)}) = x$i
          |function clause write_GPR(0b${toBinaryString5(i)}, v : XLENBITS) = {
+         |\twrite_GPR_hook(0b${toBinaryString5(i)}, v);
          |\tx$i = v
          |}
          |""".stripMargin

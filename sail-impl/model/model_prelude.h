@@ -28,6 +28,8 @@ unit phy_write_half_word(uint32_t address, uint16_t data);
 unit phy_write_word(uint32_t address, uint32_t data);
 unit phy_write_double_word(uint32_t address, uint64_t data);
 
+unit write_GPR_hook(uint8_t reg, uint64_t value);
+
 // GPRs
 uint64_t get_resetval_x0(unit);
 uint64_t get_resetval_x1(unit);
