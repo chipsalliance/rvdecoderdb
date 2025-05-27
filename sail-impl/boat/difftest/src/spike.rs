@@ -14,13 +14,15 @@ pub fn run_process(
         .unwrap_or_else(|err| panic!("fail exeuting spike: {err}"));
 
     if !result.status.success() {
+        println!("{}", String::from_utf8_lossy(&result.stderr));
         return Err(format!(
-            "fail to execute '{spike_exec:?}' with args {args:#?} for elf {}",
+            "fail to execute '{spike_exec:?}' with args {} for elf {}",
+            args.join(" "),
             elf_path.as_ref().to_str().unwrap()
         ));
     }
 
-    let stdout = String::from_utf8_lossy(&result.stdout);
+    let stdout = String::from_utf8_lossy(&result.stderr);
     let spike_log_ast = parse_spike_log(stdout);
 
     Ok(spike_log_ast)
@@ -43,12 +45,12 @@ pub type SpikeLog = Vec<SpikeLogSyntax>;
 
 #[derive(Debug, Default)]
 pub struct SpikeLogSyntax {
-    core: u8,
-    privilege: u8,
-    pc: u64,
-    instruction: u32,
+    pub core: u8,
+    pub privilege: u8,
+    pub pc: u64,
+    pub instruction: u32,
     // register name -> rd value
-    reg: Vec<SpikeRegister>,
+    pub reg: Vec<SpikeRegister>,
 }
 
 #[derive(Debug)]

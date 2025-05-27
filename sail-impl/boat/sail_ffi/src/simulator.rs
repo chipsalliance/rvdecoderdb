@@ -59,6 +59,7 @@ impl From<SimulatorParams> for &SimulatorHandler<Simulator> {
 }
 
 pub struct Simulator {
+    pc: u64,
     memory: Vec<u8>,
     statistic: Statistic,
     is_reset: bool,
@@ -72,6 +73,7 @@ pub struct Simulator {
 impl Simulator {
     fn new(memory_size: usize, max_same_instruction: u8) -> Self {
         Self {
+            pc: 0x1000,
             memory: vec![0u8; memory_size],
             statistic: Statistic::new(),
             is_reset: true,
@@ -100,11 +102,10 @@ impl Simulator {
     pub fn check_step(&mut self) -> Result<(), SimulationException> {
         let updated = self.last_reg_state.update(&Self::regs_to_seq());
 
-        let t = crate::ffi::get_pc();
         let span = span!(
             Level::DEBUG,
             ("check arch states"),
-            pc = format!("{:#x}", t),
+            pc = format!("{:#x}", self.pc),
         );
         let _guard = span.enter();
         updated.iter().for_each(|(register_index, val)| {
@@ -112,7 +113,7 @@ impl Simulator {
                 Level::TRACE,
                 event_type = "arch_state",
                 action = "register_update",
-                pc = t,
+                pc = self.pc,
                 reg_idx = register_index,
                 current_value = val
             );
@@ -124,6 +125,7 @@ impl Simulator {
 
         self.statistic.instruction_count += 1;
         self.statistic.step_count += 1;
+        self.pc = crate::ffi::get_pc();
 
         Ok(())
     }
