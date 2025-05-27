@@ -22,6 +22,7 @@ pub fn run_process(
         ));
     }
 
+    std::fs::write("./spike_commit.log", &result.stderr).unwrap();
     let stdout = String::from_utf8_lossy(&result.stderr);
     let spike_log_ast = parse_spike_log(stdout);
 

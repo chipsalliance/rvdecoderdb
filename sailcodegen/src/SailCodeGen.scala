@@ -477,16 +477,23 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
       String.format("%5s", i.toBinaryString).replace(' ', '0')
     }
 
-    val range = if (arch.extensions.contains("e")) 0 to 15 else 0 to 31
+    val range = if (arch.extensions.contains("e")) 1 to 15 else 1 to 31
 
     range.map { i =>
-      s"""function clause read_GPR(0b${toBinaryString5(i)}) = x$i
-         |function clause write_GPR(0b${toBinaryString5(i)}, v : XLENBITS) = {
-         |\twrite_GPR_hook(0b${toBinaryString5(i)}, v);
+      val bit = toBinaryString5(i)
+      s"""function clause read_GPR(0b${bit}) = x$i
+         |function clause write_GPR(0b${bit}, v : XLENBITS) = {
+         |\twrite_GPR_hook(0b${bit}, v);
          |\tx$i = v
          |}
          |""".stripMargin
-    }.mkString
+    }.mkString +
+    s"""function clause read_GPR(0b00000) = x0
+       |// write to x0 is a no-op
+       |function clause write_GPR(0b00000, v : XLENBITS) = {
+       |\t()
+       |}
+       |""".stripMargin
   }
 
   def genCSRRegDef(csrs: Seq[CSR]): String = {
