@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::fmt::Display;
 
 #[derive(Debug, Deserialize)]
 struct CaseConfig {
@@ -54,7 +55,7 @@ fn parse_spike_log(log: impl AsRef<str>) -> SpikeLogAst {
         .enumerate()
         .map(|(line_number, line)| match SpikeLogLineAst::parse(line) {
             Err(err) => {
-                panic!("fail parsing line at {line_number}: {err}")
+                panic!("fail parsing line at line {line_number}: {err}. Original line: '{line}'")
             }
             Ok(ast) => ast,
         })
@@ -110,11 +111,9 @@ impl ParseContext<'_> {
 
 impl SpikeLogLineAst {
     fn parse<'a>(line: &'a str) -> Result<Self, String> {
-        let to_error = |t: &str, key: &str, actual: &str, err: String| {
-            ParseCursor::Error(format!(
-                "expect {t} value '{key}' from line '{line}', get '{actual}': {err}"
-            ))
-        };
+        fn to_error<'a>(expect: &str, actual: &str, err: impl Display) -> ParseCursor<'a> {
+            ParseCursor::Error(format!("expect {expect}, get '{actual}': {err}"))
+        }
 
         let ctx: ParseContext = line.trim().split(" ").filter(|part| !part.is_empty()).fold(
             ParseContext::new(),
@@ -124,7 +123,11 @@ impl SpikeLogLineAst {
                     ParseCursor::Core if elem == "core" => ctx,
                     // vec[0] is core id. core id always comes with ":", strip it here
                     ParseCursor::Core => {
-                        assert!(elem.ends_with(":"));
+                        if !elem.ends_with(":") {
+                            ctx.cursor =
+                                to_error("':' suffixed string", elem, "core_id not ends with ':'");
+                            return ctx;
+                        }
 
                         match (&elem[0..elem.len() - 1]).parse::<u8>() {
                             Ok(v) => {
@@ -133,7 +136,7 @@ impl SpikeLogLineAst {
                                 ctx
                             }
                             Err(err) => {
-                                ctx.cursor = to_error("u8", "core_id", elem, err.to_string());
+                                ctx.cursor = to_error("u8 value core_id", elem, err);
                                 ctx
                             }
                         }
@@ -145,12 +148,16 @@ impl SpikeLogLineAst {
                             ctx
                         }
                         Err(err) => {
-                            ctx.cursor = to_error("u8", "priv_id", elem, err.to_string());
+                            ctx.cursor = to_error("u8 value priv_id", elem, err);
                             ctx
                         }
                     },
                     ParseCursor::Pc => {
-                        assert!(elem.starts_with("0x"));
+                        if !elem.starts_with("0x") {
+                            ctx.cursor =
+                                to_error("hex string", elem, "pc value not prefixed with '0x'");
+                            return ctx;
+                        };
 
                         match u64::from_str_radix(elem.trim_start_matches("0x"), 16) {
                             Ok(pc) => {
@@ -159,14 +166,30 @@ impl SpikeLogLineAst {
                                 ctx
                             }
                             Err(err) => {
-                                ctx.cursor = to_error("u64", "pc", elem, err.to_string());
+                                ctx.cursor = to_error("u64 value pc", elem, err);
                                 ctx
                             }
                         }
                     }
                     // vec[3] is instruction decode, it always has surrounding parentheses
                     ParseCursor::Insn => {
-                        assert!(elem.starts_with("(0x") && elem.ends_with(")"));
+                        if !elem.starts_with("(0x") {
+                            ctx.cursor = to_error(
+                                "parentheses surrounding hex string",
+                                elem,
+                                "instruction not started with '(0x'",
+                            );
+                            return ctx;
+                        };
+
+                        if !elem.ends_with(")") {
+                            ctx.cursor = to_error(
+                                "parentheses surrounding hex string",
+                                elem,
+                                "instruction not ends with ')'",
+                            );
+                            return ctx;
+                        };
 
                         match u32::from_str_radix(&elem[3..elem.len() - 1], 16) {
                             Ok(insn) => {
@@ -175,7 +198,7 @@ impl SpikeLogLineAst {
                                 ctx
                             }
                             Err(err) => {
-                                ctx.cursor = to_error("u32", "instruction", elem, err.to_string());
+                                ctx.cursor = to_error("u32 value instruction", elem, err);
                                 ctx
                             }
                         }
@@ -188,7 +211,12 @@ impl SpikeLogLineAst {
                         ctx
                     }
                     ParseCursor::RegParseName(reg_name) => {
-                        assert!(elem.starts_with("0x"));
+                        if !elem.starts_with("0x") {
+                            ctx.cursor =
+                                to_error("hex string", elem, "pc value not prefixed with '0x'");
+                            return ctx;
+                        };
+
                         match u64::from_str_radix(elem.trim_start_matches("0x"), 16) {
                             Ok(reg_val) => {
                                 ctx.cursor = ParseCursor::RegParseBegin;
@@ -197,7 +225,7 @@ impl SpikeLogLineAst {
                             }
                             Err(err) => {
                                 ctx.cursor =
-                                    to_error("u64", "register_value", elem, err.to_string());
+                                    to_error("u64 value register_value", elem, err.to_string());
                                 ctx
                             }
                         }
