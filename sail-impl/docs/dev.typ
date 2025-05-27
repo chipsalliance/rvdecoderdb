@@ -147,6 +147,39 @@ Following are required memory operation that should be implemented at emulator s
 == Development notes
 Developers can setup Rust development environment using command `nix develop .#sail-riscv.boat.emulator.dev`.
 
+== Logging usage
+The `sail-ffi` crate is a library crate used for composing a emulator, thus
+logging should always use `Level::DEBUG` and `Level::TRACE` only. `Level::INFO`
+and error handling shoule be up lifting to emulator application side.
+
+All architecture states change should be recorded with `TRACE` level event and
+contains `event_type` and `action` field for other software to easily
+deserialize to corresponding data type.
+
+Current implementation contains following event type:
+
+- *physical_memory*
+
+For "physical_memory" event type, current implmentation records following fields:
+
+  - action: a text value indicate current action to physical memory. Possible value: *"read"*, *"write"*.
+  - bytes: a integer value indicate the total bytes get operated on physical memory. Possible value: *1,2,4,8*.
+  - address: a 64-bit integer value indicate the start address of this action to the physical memory.
+  - data: a debug value in text indicating the value read from or write to the physical value.
+  - message: optional text value with human readable emulator status attached
+
+- *arch_state*
+
+For "arch_state" event type, current implementation records following fields:
+
+  - action: a text value indicate current action to architecture states. Possible value: *"register_update"*.
+  - pc: a 64-bit integer value indicate the current PC of this action.
+  - reg_idx: if current action is "register_update", `reg_idx` is a integer number represent the index of the changed register.
+  - current_value: if current action is "register_update", `current_value` is a 64-bit integer showing the current value in register.
+  - message: optional text value with human readable emulator status attached
+
+All event unrelated but useful for knowing `sail-ffi` running status shoule be logging with `Level::DEBUG`.
+
 == Sail FFI
 
 To initialize a Sail model, drive it to process each instruction, and read model
@@ -175,30 +208,3 @@ the Rust crate.
   [`zstep :: unit -> unit`], [function type], [Run one step for fetch-decode-execute loop],
   [`model_init :: void -> void`], [function type], [Initialize all registers],
 )
-
-== Diff test
-
-All architecture states change should be recorded with `TRACE` level event and
-contains `event_type` and `action` field for other software to easily
-deserialize to corresponding data type.
-
-Current implementation contains following event type:
-
-- *physical_memory*
-
-For "physical_memory" event type, current implmentation records following fields:
-
-  - action: a text value indicate current action to physical memory. Possible value: *"read"*, *"write"*.
-  - bytes: a integer value indicate the total bytes get operated on physical memory. Possible value: *1,2,4,8*.
-  - address: a 64-bit integer value indicate the start address of this action to the physical memory.
-  - data: a debug value in text indicating the value read from or write to the physical value.
-
-- *arch_state*
-
-For "arch_state" event type, current implementation records following fields:
-
-  - action: a text value indicate current action to architecture states. Possible value: *"register_update"*.
-  - pc: a 64-bit integer value indicate the current PC of this action.
-  - reg_idx: if current action is "register_update", `reg_idx` is a integer number represent the index of the changed register.
-  - current_value: if current action is "register_update", `current_value` is a 64-bit integer showing the current value in register.
-

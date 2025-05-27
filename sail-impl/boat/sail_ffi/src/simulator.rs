@@ -60,9 +60,7 @@ impl From<SimulatorParams> for &SimulatorHandler<Simulator> {
 
 pub struct Simulator {
     memory: Vec<u8>,
-    instruction_count: u64,
-    fetch_count: u64,
-    step_count: u64,
+    statistic: Statistic,
     is_reset: bool,
     exception: Option<SimulationException>,
     last_instruction: u64,
@@ -75,9 +73,7 @@ impl Simulator {
     fn new(memory_size: usize, max_same_instruction: u8) -> Self {
         Self {
             memory: vec![0u8; memory_size],
-            instruction_count: 0,
-            step_count: 0,
-            fetch_count: 0,
+            statistic: Statistic::new(),
             is_reset: true,
             exception: None,
             last_instruction: 0,
@@ -126,8 +122,8 @@ impl Simulator {
             return Err(exception.clone());
         }
 
-        self.instruction_count += 1;
-        self.step_count += 1;
+        self.statistic.instruction_count += 1;
+        self.statistic.step_count += 1;
 
         Ok(())
     }
@@ -180,7 +176,7 @@ impl Simulator {
 
     pub(crate) fn inst_fetch(&mut self, pc: MarchBits) -> MarchBits {
         let inst: MarchBits = u32::from_le_bytes(self.phy_readmem(pc)).into();
-        self.fetch_count += 1;
+        self.statistic.fetch_count += 1;
 
         if inst == self.last_instruction {
             self.last_instruction_met_count += 1;
@@ -199,7 +195,12 @@ impl Simulator {
             panic!("[sail] instruction fetch fail with zero data")
         }
 
-        event!(Level::DEBUG, "instruction fetched: encoding={:#x}", inst);
+        event!(
+            Level::TRACE,
+            event_type = "instruction_fetch",
+            data = inst,
+            encoding = format!("{:#010x}", inst)
+        );
 
         inst
     }
@@ -269,7 +270,7 @@ impl Simulator {
 
         // we can safely unwrap here since we already type check the size of input `N`
         if address == EXIT_ADDR {
-            event!(Level::INFO, "exit address got written, exit simulator");
+            event!(Level::DEBUG, "exit address got written, exit simulator");
             self.exception = Some(SimulationException::Exited);
             return;
         }
@@ -298,15 +299,23 @@ impl Simulator {
         false
     }
 
-    pub fn print_statistic(&self) {
-        event!(
-            Level::INFO,
-            instruction_count = self.instruction_count,
-            fetch_count = self.fetch_count,
-            step_count = self.step_count,
-            exception = ?self.exception,
-            "statistic"
-        )
+    pub fn take_statistic(&mut self) -> Statistic {
+        let stat = self.statistic.clone();
+        self.statistic = Statistic::new();
+        stat
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Statistic {
+    instruction_count: u64,
+    fetch_count: u64,
+    step_count: u64,
+}
+
+impl Statistic {
+    fn new() -> Self {
+        Self::default()
     }
 }
 

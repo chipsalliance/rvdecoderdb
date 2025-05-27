@@ -5,6 +5,8 @@ use std::str::FromStr;
 use tracing::{event, Level};
 use tracing_subscriber::{layer::Filter, prelude::*, EnvFilter};
 
+const VERBOSITY_WRITE_TRACE: u8 = 2;
+
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -125,7 +127,7 @@ fn setup_logging(args: &Args) {
         );
     let registry = tracing_subscriber::registry().with(stdout_log_layer);
 
-    let json_log = if args.verbose > 1 {
+    let json_log = if args.verbose > VERBOSITY_WRITE_TRACE {
         let log_file = std::fs::File::create(&args.output_log_path).unwrap_or_else(|err| {
             panic!("fail to create log file {}: {}", args.output_log_path, err)
         });
@@ -164,15 +166,22 @@ fn main() {
         if let Err(exception) = step_result {
             match exception {
                 SimulationException::Exited => {
-                    event!(Level::INFO, "Simulation exit successfully");
+                    event!(Level::INFO, "simulation exit successfully");
                 }
                 other => {
-                    event!(Level::ERROR, "Simulation exit with error: {other}")
+                    event!(Level::ERROR, "simulation exit with error: {other}")
                 }
             };
             break;
         }
     }
 
-    sim_handle.with(|sim| sim.print_statistic());
+    sim_handle.with(|sim| {
+        let stat = sim.take_statistic();
+        event!(Level::INFO, ?stat)
+    });
+
+    if args.verbose > VERBOSITY_WRITE_TRACE {
+        event!(Level::INFO, "trace log store in {}", args.output_log_path);
+    }
 }
