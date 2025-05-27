@@ -21,12 +21,12 @@ fn main() {
     });
 }
 
-type SpikeLogAst = Vec<SpikeLogLineAst>;
+type SpikeLog = Vec<SpikeLogSyntax>;
 
 fn execute_spike(
     args: &[String],
     elf_path: impl AsRef<std::ffi::OsStr>,
-) -> Result<SpikeLogAst, String> {
+) -> Result<SpikeLog, String> {
     let spike_exec =
         which::which("spike").unwrap_or_else(|err| panic!("spike exec not found: {err}"));
 
@@ -49,11 +49,11 @@ fn execute_spike(
     Ok(spike_log_ast)
 }
 
-fn parse_spike_log(log: impl AsRef<str>) -> SpikeLogAst {
+fn parse_spike_log(log: impl AsRef<str>) -> SpikeLog {
     log.as_ref()
         .lines()
         .enumerate()
-        .map(|(line_number, line)| match SpikeLogLineAst::parse(line) {
+        .map(|(line_number, line)| match SpikeLogSyntax::parse(line) {
             Err(err) => {
                 panic!("fail parsing line at line {line_number}: {err}. Original line: '{line}'")
             }
@@ -63,13 +63,13 @@ fn parse_spike_log(log: impl AsRef<str>) -> SpikeLogAst {
 }
 
 #[derive(Debug, Default)]
-struct SpikeLogLineAst {
+struct SpikeLogSyntax {
     core: u8,
     privilege: u8,
     pc: u64,
     instruction: u32,
     // register name -> rd value
-    reg: Vec<SpikeRegLogAst>,
+    reg: Vec<SpikeRegister>,
 }
 
 enum ParseCursor<'a> {
@@ -84,14 +84,14 @@ enum ParseCursor<'a> {
 
 struct ParseContext<'a> {
     cursor: ParseCursor<'a>,
-    state: SpikeLogLineAst,
+    state: SpikeLogSyntax,
 }
 
 impl Default for ParseContext<'_> {
     fn default() -> Self {
         Self {
             cursor: ParseCursor::Core,
-            state: SpikeLogLineAst::default(),
+            state: SpikeLogSyntax::default(),
         }
     }
 }
@@ -101,7 +101,7 @@ impl ParseContext<'_> {
         Self::default()
     }
 
-    fn to_spike_log(self) -> Result<SpikeLogLineAst, String> {
+    fn to_spike_log(self) -> Result<SpikeLogSyntax, String> {
         match self.cursor {
             ParseCursor::Error(err) => Err(err),
             _ => Ok(self.state),
@@ -109,7 +109,7 @@ impl ParseContext<'_> {
     }
 }
 
-impl SpikeLogLineAst {
+impl SpikeLogSyntax {
     fn parse<'a>(line: &'a str) -> Result<Self, String> {
         fn to_error<'a>(expect: &str, actual: &str, err: impl Display) -> ParseCursor<'a> {
             ParseCursor::Error(format!("expect {expect}, get '{actual}': {err}"))
@@ -220,7 +220,7 @@ impl SpikeLogLineAst {
                         match u64::from_str_radix(elem.trim_start_matches("0x"), 16) {
                             Ok(reg_val) => {
                                 ctx.cursor = ParseCursor::RegParseBegin;
-                                ctx.state.reg.push(SpikeRegLogAst::new(reg_name, reg_val));
+                                ctx.state.reg.push(SpikeRegister::new(reg_name, reg_val));
                                 ctx
                             }
                             Err(err) => {
@@ -241,12 +241,12 @@ impl SpikeLogLineAst {
 }
 
 #[derive(Debug)]
-struct SpikeRegLogAst {
+struct SpikeRegister {
     name: String,
     value: u64,
 }
 
-impl SpikeRegLogAst {
+impl SpikeRegister {
     fn new(n: impl std::fmt::Display, v: u64) -> Self {
         Self {
             name: n.to_string(),
