@@ -46,4 +46,5 @@ in
 {
   emulator = builder "emulator";
   sail_ffi = builder "sail_ffi";
+  difftest = builder "difftest";
 }

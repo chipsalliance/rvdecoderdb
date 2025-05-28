@@ -145,7 +145,14 @@ Following are required memory operation that should be implemented at emulator s
 
 = Emulator
 == Development notes
-Developers can setup Rust development environment using command `nix develop .#sail-riscv.boat.emulator.dev`.
+To have rust-analyzer and compiled Sail RISC-V model in environment, users can set the `$EDITOR` environment
+and run `make dev` in sail-impl/boat directory.
+
+== Test notes
+In "sail-impl/boat" directory, run `make` with following targets:
+- run a demo with boat emulator: `make boat_demo`
+- run a demo with spike emulator: `make spike_demo`
+- run a demo with difftest: `make difftest_demo`
 
 == Logging usage
 The `sail-ffi` crate is a library crate used for composing a emulator, thus
