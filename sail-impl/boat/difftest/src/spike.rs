@@ -1,29 +1,31 @@
 use std::fmt::Display;
 use std::ops::{Deref, DerefMut};
 
+use anyhow::Context;
+
 pub fn run_process(
     args: &[String],
     elf_path: impl AsRef<std::ffi::OsStr>,
-) -> Result<SpikeLog, String> {
-    let spike_exec =
-        which::which("spike").unwrap_or_else(|err| panic!("spike exec not found: {err}"));
+) -> anyhow::Result<SpikeLog> {
+    let spike_exec = which::which("spike").with_context(|| "spike exec not found")?;
 
     let result = std::process::Command::new(&spike_exec)
         .args(args)
         .arg(&elf_path)
         .output()
-        .unwrap_or_else(|err| panic!("fail exeuting spike: {err}"));
+        .with_context(|| "fail exeuting spike")?;
 
     if !result.status.success() {
         println!("{}", String::from_utf8_lossy(&result.stderr));
-        return Err(format!(
-            "fail to execute '{spike_exec:?}' with args {} for elf {}",
+        anyhow::bail!(
+            "fail to execute spike with args {} for elf {}",
             args.join(" "),
             elf_path.as_ref().to_str().unwrap()
-        ));
+        );
     }
 
-    std::fs::write("./spike_commit.log", &result.stderr).unwrap();
+    std::fs::write("./spike_commit.log", &result.stderr)
+        .with_context(|| "fail storing spike commit log")?;
     let stdout = String::from_utf8_lossy(&result.stderr);
     let spike_log_ast = parse_spike_log(stdout);
 
@@ -70,6 +72,8 @@ impl SpikeLog {
         self.0.is_empty()
     }
 
+    // TODO: future usage
+    #[allow(dead_code)]
     pub fn has_register_commits(&self) -> Vec<&SpikeLogSyntax> {
         self.0
             .iter()
@@ -364,6 +368,7 @@ impl SpikeLogSyntax {
                         // behavior to spike, so trim memory here
                         ParseCursor::RegParseBegin if elem != "mem" && !elem.starts_with("0x") => {
                             const VALID: [char; 4] = ['x', 'f', 'v', 'c'];
+                            // TODO: handle CSR
                             if VALID.contains(&elem.chars().next().unwrap()) {
                                 ctx.cursor = ParseCursor::RegParseName(elem);
                             } else {

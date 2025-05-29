@@ -1,7 +1,12 @@
+use anyhow::Context;
 use boat::{BoatEvent, BoatLog};
+use clap::Parser;
 use serde::Deserialize;
 use serde::Deserializer;
 use spike::SpikeLog;
+use tracing::{error, info};
+use tracing_subscriber;
+
 mod boat;
 mod spike;
 
@@ -37,25 +42,48 @@ struct CaseConfig {
     end_pattern: EndPattern,
 }
 
-fn main() {
-    let cfg_raw = std::fs::read("./sail_difftest_config.json")
-        .unwrap_or_else(|err| panic!("fail to read sail difftest config: {err}"));
-    let cfg: CaseConfig = serde_json::from_slice(&cfg_raw)
-        .unwrap_or_else(|err| panic!("fail to parse config: {err}"));
+#[derive(clap::Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct DiffTestArgs {
+    #[arg(short = 'c', long, default_value_t = String::from("./sail_difftest_config.json"))]
+    config_path: String,
+}
+
+fn main() -> anyhow::Result<()> {
+    let args = DiffTestArgs::parse();
+
+    tracing_subscriber::fmt()
+        .pretty()
+        .with_file(false)
+        .with_line_number(false)
+        .without_time()
+        .init();
+
+    let cfg_raw =
+        std::fs::read(args.config_path).with_context(|| "fail to read sail difftest config")?;
+    let cfg: CaseConfig =
+        serde_json::from_slice(&cfg_raw).with_context(|| "fail to parse sail difftest config")?;
+
     let all_elf_files = glob::glob(&cfg.elf_path_glob)
-        .unwrap_or_else(|err| panic!("invalid path glob {}: {}", cfg.elf_path_glob, err));
-    all_elf_files.for_each(|path| {
-        let path = path.unwrap_or_else(|err| panic!("glob leads to unreadable path: {err}"));
-        println!("Running elf {path:?}");
-        let spike_log = spike::run_process(&cfg.spike_args, &path).unwrap();
-        let boat_log = boat::run_process(&cfg.boat_args, &path).unwrap();
+        .with_context(|| format!("invalid path glob {}", cfg.elf_path_glob))?;
+
+    for path in all_elf_files {
+        let path = path.with_context(|| "internal error: glob leads to unreadable path")?;
+
+        info!("running difftest for {path:?}");
+
+        let spike_log = spike::run_process(&cfg.spike_args, &path)?;
+        let boat_log = boat::run_process(&cfg.boat_args, &path)?;
         let diff_result = diff(&spike_log, &boat_log, &cfg.end_pattern);
+
         if !diff_result.is_same {
-            panic!("\n{}\n", diff_result.context);
+            error!("\n{}", diff_result.context);
         } else {
-            println!("difftest pass")
+            info!("difftest pass")
         }
-    });
+    }
+
+    Ok(())
 }
 
 struct DiffMeta {
@@ -170,13 +198,18 @@ fn diff(spike_log: &SpikeLog, boat_log: &BoatLog, end_pattern: &EndPattern) -> D
 
         if match_event.is_none() {
             return DiffMeta::failed(indoc::formatdoc! {"
-                At PC={pc:#018x} boat write {data:#018x} to register x{reg_idx}, but this action was not found at spike side.
+                At PC={pc:#018x} boat write {data:#018x} to register x{reg_idx},
+                but this action was not found at spike side.
 
-                Displaying Spike event dump:
-                {spike_event:#?}
+                ------------
+                |Event Dump|
+                ------------
 
-                Displaying Boat event dump:
-                {search_result:#?}
+                We get boat:
+                {search_result}
+
+                But have spike:
+                {spike_event}
             "});
         }
     }

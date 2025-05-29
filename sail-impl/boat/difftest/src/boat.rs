@@ -1,12 +1,14 @@
+use anyhow::Context;
 use serde::Deserialize;
+use std::fmt::Display;
 
 pub type BoatLog = Vec<BoatEvent>;
 
 pub fn run_process(
     args: &[String],
     elf_path: impl AsRef<std::ffi::OsStr>,
-) -> Result<BoatLog, String> {
-    let boat_exec = which::which("boat").unwrap_or_else(|err| panic!("boat exec not found: {err}"));
+) -> anyhow::Result<BoatLog> {
+    let boat_exec = which::which("boat").with_context(|| "boat exec not found")?;
 
     const EVENT_PATH: &str = "./boat_trace_event.jsonl";
     let result = std::process::Command::new(&boat_exec)
@@ -17,17 +19,17 @@ pub fn run_process(
         .arg(EVENT_PATH)
         .args(args)
         .output()
-        .unwrap_or_else(|err| panic!("fail exeuting boat: {err}"));
+        .with_context(|| "fail exeuting boat")?;
 
     if !result.status.success() {
-        return Err(format!(
-            "fail to execute '{boat_exec:?}' with args {args:?} for elf {}",
+        anyhow::bail!(
+            "fail to execute boat with args {args:?} for elf {}",
             elf_path.as_ref().to_str().unwrap()
-        ));
+        );
     }
 
     let trace_event =
-        std::fs::read(EVENT_PATH).unwrap_or_else(|err| panic!("fail reading {EVENT_PATH}: {err}"));
+        std::fs::read(EVENT_PATH).with_context(|| format!("fail reading {EVENT_PATH}"))?;
 
     let boat_log = get_boat_events(&trace_event);
 
@@ -52,6 +54,7 @@ pub struct BoatLogLine {
     pub fields: BoatEvent,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 #[serde(tag = "event_type")]
 pub enum BoatEvent {
@@ -72,6 +75,23 @@ pub enum BoatEvent {
     InstructionFetch { data: u32 },
     #[serde(rename = "reset_vector")]
     ResetVector { new_addr: u64 },
+}
+
+impl Display for BoatEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ArchState {
+                action,
+                pc,
+                reg_idx,
+                data,
+            } => indoc::writedoc!(
+                f,
+                "PC={pc:#018x} {action} to register [x{reg_idx}] with [{data:#018x}]"
+            ),
+            _ => write!(f, "{self:#?}"),
+        }
+    }
 }
 
 impl BoatEvent {
