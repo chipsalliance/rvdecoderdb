@@ -93,28 +93,10 @@ unsafe extern "C" fn is_reset(_: Unit) -> bool {
 }
 
 #[unsafe(no_mangle)]
-unsafe extern "C" fn print_instr(s: *const c_char) -> Unit {
+unsafe extern "C" fn print_line(s: *const c_char) -> Unit {
     unsafe {
         let sail_str = CStr::from_ptr(s).to_string_lossy();
-        event!(Level::DEBUG, "sail calling print_instr: {}", sail_str);
-    };
-    SAIL_UNIT
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn print_reg(s: *const c_char) -> Unit {
-    unsafe {
-        let sail_str = CStr::from_ptr(s).to_string_lossy();
-        event!(Level::DEBUG, "sail calling print_reg: {}", sail_str);
-    };
-    SAIL_UNIT
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn print_platform(s: *const c_char) -> Unit {
-    unsafe {
-        let sail_str = CStr::from_ptr(s).to_string_lossy();
-        event!(Level::DEBUG, "sail calling print_platform: {}", sail_str);
+        event!(Level::DEBUG, "sail_print_line: {}", sail_str);
     };
     SAIL_UNIT
 }

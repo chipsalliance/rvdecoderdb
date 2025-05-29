@@ -5,9 +5,7 @@ typedef char *sail_string;
 typedef int unit;
 
 // debug
-unit print_instr(sail_string s);
-unit print_reg(sail_string s);
-unit print_platform(sail_string s);
+unit print_line(sail_string s);
 
 // Exec
 uint32_t inst_fetch(uint64_t pc);
