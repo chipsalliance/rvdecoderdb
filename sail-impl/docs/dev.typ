@@ -70,7 +70,7 @@ that supports a Foreign Function Interface (FFI) to implement hardware behaviors
 not defined in the ISA specification. For #projectName, the Rust programming
 language was selected to develop the emulator. This choice was driven by Rust's
 design simplicity and the readability of its code. Furthermore, the Rust
-community provides robust compiler toolchains, which helps to reduce the time
+community provides robust compiler tool-chains, which helps to reduce the time
 spent on configuring and managing the build system.
 
 = Codegen CLI
@@ -79,6 +79,63 @@ spent on configuring and managing the build system.
 
 = Model
 This section covers detail implementation and coding guidance for a Sail ISA model.
+
+== Instruction behavior
+All ISA behavior describe file are placed under `model` directory.
+
+Instruction behavior definition files are separated by instruction name, and
+grouped by their corresponding instruction sets. The instruction sets group
+rule follows riscv/riscv-opcodes. For example, load word instruction `lw`
+should be placed under `rv_i` directory, and load double word instruction `ld`
+should be placed under `rv64_i` directory. Developers can check
+https://github.com/riscv/riscv-opcodes/tree/master/extensions for details.
+
+Each file is treated as function body. The Sail code-gen CLI will traverse the
+`model/<extension>` directory and generate function signature for all the
+files. So developers can consider writing instruction file is in a function
+context, with arguments like global built-in value binding and some prelude
+function imported. The Sail code-gen CLI generate the function argument using
+encoding specified in riscv-opcodes.
+
+For example, when developers try to add `addiw` instruction, their should check
+#link("https://github.com/riscv/riscv-opcodes/blob/master/extensions/rv64_i")[
+  rv64_i encoding file
+] for the instruction encoding. And as we can see, `addiw` is a instruction in
+rv64_i instruction sets, so developers should create a `addiw` file under `rv64_i`
+directory. Then as riscv-opcodes shown, `addiw` has three variable fields: `rd`, `rs1`,
+and `imm12`, these fields will be generated as Sail function arguments, and available
+in each file context. At runtime, they will be the bits vector value extracted from
+instruction decode result.
+
+So developers can have following implementation for `addiw` behavior.
+
+```sail
+let result : XLENBITS = sign_extend(imm12) + read_GPR(rs1);
+write_GPR(rd, sign_extend(result[63..0]));
+tick_pc();
+```
+
+- `XLENBITS`: A prelude bits type with pre-defined length. In the context of rv64,
+it is set as `bits(64)`.
+- `sign_extend`: A prelude function that do a sign extend to the value.
+- `imm12`: function arguments that will be generated at build time.
+- `read_GPR`: A prelude function that read general purpose register file by id.
+- `rs1`: function arguments that will be generated at build time.
+- `write_GPR`: A prelude function that will write general purpose register file with given data.
+- `tick_pc`: A prelude function that will increase the `PC`.
+
+After code-gen phase, we will have following Sail function generated for executing
+`addiw` when decoding match:
+
+```sail
+union clause ast = ADDIW : (bits(5), bits(5), bits(12))
+mapping clause encdec = ADDIW(rd, rs1, imm12) <-> imm12 @ rs1 @ 0b000 @ rd @ 0b0011011
+function clause execute (ADDIW(rd, rs1, imm12)) = {
+	let result : XLENBITS = sign_extend(imm12) + read_GPR(rs1);
+	write_GPR(rd, sign_extend(result[63..0]));
+	tick_pc();
+}
+```
 
 == FFI Interface
 The model implementation is required to provide a C header file
@@ -95,13 +152,6 @@ This section instruct you all the possible context when defining a instruction.
 
 - All the library functions: TODO: jump to library section
 - Registers defined at riscv-opcodes TODO: explain possible register name trim
-
-== Files
-Instruction behavior definition files are separated by instruction name, and
-grouped by their corresponding instruction sets. The instruction sets group
-rule follows riscv/riscv-opcodes. For example, load word instruction `lw`
-should be placed under `rv_i` directory, and load double word instruction `ld`
-shoule be placed under `rv64_i` directory.
 
 == Provided library functions
 
