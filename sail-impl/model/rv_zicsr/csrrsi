@@ -1,0 +1,16 @@
+// For CSRRSI and CSRRCI, if the uimm[4:0] field is zero, then these
+// instructions will not write to the CSR, and shall not cause any of the side
+// effects that might otherwise occur on a CSR write, nor raise illegal
+// instruction exceptions on accesses to read-only CSRs.
+//
+// Both CSRRSI and CSRRCI will always read the CSR and cause any read side
+// effects regardless of rd and rs1 fields.
+
+let csr_value: XLENBITS = zero_extend(read_CSR(csr));
+if zimm5 != 0b00000 then {
+  write_GPR(rd, csr_value);
+  let value: XLENBITS = zero_extend(zimm5);
+  let result: XLENBITS = csr_value | value;
+  write_CSR(csr, result);
+};
+tick_pc();
