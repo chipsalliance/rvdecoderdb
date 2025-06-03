@@ -4,12 +4,13 @@
 import org.chipsalliance.rvdecoderdb.{Arg, Instruction}
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
 import mainargs._
+import scala.collection.mutable.ArrayBuffer
 
 object Main {
   @main
   case class Params(
       @arg(short = 'i', name = "model-dir", doc = "Path to Sail model implementation")
-      sailModelDir:      os.Path,
+      sailModelDir:     os.Path,
       @arg(short = 'o', name = "output-dir", doc = "Output directory path to generate sail sources")
       outputDir:        os.Path,
       @arg(short = 'r', name = "riscv-opcodes-path", doc = "Path to riscv-opcodes path")
@@ -37,68 +38,33 @@ object Main {
 case class Arch(xlen: Int, extensions: Set[String])
 
 object Arch {
-  def fromMarch(march: String): Option[Arch] = {
-    if (march.length < 5) return None
+  def fromLiteral(march: String): Arch = {
+    val xlen =
+      if (march.startsWith("rv64")) 64
+      else if (march.startsWith("rv32")) 32
+      else throw new Exception(s"invalid march with invalid xlen: ${march}")
 
-    val xlen = if (march.startsWith("rv64")) 64 else if (march.startsWith("rv32")) 32 else 0
+    val priv = 1
 
     val parsedMarch = march.replace("rv64g", "rv64imafd").replace("rv32g", "rv32imafd")
 
-    if (xlen == 0 || !List("rv64i", "rv32i", "rv32e").exists(parsedMarch.startsWith)) {
-      return None
-    }
-
     val exts = parsedMarch.substring(4).split("_").toList match {
-      case head :: tail => head.map(_.toString).toSet ++ tail.toSet
-      case Nil          => Set.empty[String]
+      case base :: ext =>
+        base
+          .flatMap(e =>
+            if (e == 'g') { List("i", "m", "a", "f", "d") }
+            else List(e.toString)
+          )
+          .toSet ++ ext.toSet
+      case otherwise   => otherwise.toSet
     }
 
-    Some(Arch(xlen, exts))
+    if (exts.isEmpty) {
+      throw new Exception(s"invalid march with not extension: ${march}")
+    }
+
+    Arch(xlen, exts)
   }
-}
-
-case class Bitfields(bfname: String, bfpos: String)
-
-object Bitfields {
-  implicit val rw: RW[Bitfields] = macroRW
-}
-
-case class Position(position: String)
-
-object Position {
-  implicit val rw: RW[Position] = macroRW
-}
-
-case class CSR(
-    csrname:       String,
-    number:        String,
-    width:         String,
-    subordinateTo: String,
-    bitfields:     Either[Position, Seq[Bitfields]]
-)
-
-object CSR {
-  implicit val rw: RW[CSR] = macroRW
-
-  // Define implicit ReadWriter for Either[Position, Seq[Bitfields]]
-  implicit val eitherRW: RW[Either[Position, Seq[Bitfields]]] = upickle.default
-    .readwriter[ujson.Value]
-    .bimap(
-      {
-        case Left(position)   => write(position)
-        case Right(bitfields) => write(bitfields)
-      },
-      json => {
-        val jsonObj = ujson.read(json)
-        if (jsonObj.isInstanceOf[ujson.Obj] && jsonObj.obj.contains("position")) {
-          Left(read[Position](json))
-        } else if (jsonObj.isInstanceOf[ujson.Arr]) {
-          Right(read[Seq[Bitfields]](json))
-        } else {
-          throw new ujson.Value.InvalidData(json, "Expected Position or Seq[Bitfields]")
-        }
-      }
-    )
 }
 
 case class SailImplMeta(march: String)
@@ -108,33 +74,41 @@ object SailImplMeta {
 
 case class SailCodeGeneratorParams(sailModelDir: os.Path, outputDir: os.Path, riscvOpCodesPath: os.Path)
 class SailCodeGenerator(params: SailCodeGeneratorParams) {
-  import params.{outputDir, riscvOpCodesPath, sailModelDir}
+  // Group declare here to have forward compatibility to customize each path at runtime
+  lazy private val archDir: os.Path = {
+    os.makeDir.all(params.outputDir / "arch")
+    params.outputDir / "arch"
+  }
+
+  private val sail_ext_enabled_path      = archDir / "ext_enabled.sail"
+  private val sail_states_reset_path     = archDir / "states_reset.sail"
+  private val sail_states_define_path    = archDir / "states_define.sail"
+  private val sail_states_operation_path = archDir / "states_op.sail"
+  private val sail_xlen_path             = params.outputDir / "rv_xlen.sail"
+  private val sail_core_path             = params.outputDir / "rv_core.sail"
+
+  private val user_illegal_path = {
+    if (!os.exists(params.sailModelDir / "arch" / "illegal.sail")) {
+      throw new Exception("illegal.sail not found")
+    }
+
+    params.sailModelDir / "arch" / "illegal.sail"
+  }
+
+  private val user_csr_path    = params.sailModelDir / "csr"
+  private val user_csr_db_path = user_csr_path / "csrs.csv"
 
   def gen() {
-    val meta = read[SailImplMeta](os.read(sailModelDir / "meta.json"))
+    val meta = read[SailImplMeta](os.read(params.sailModelDir / "meta.json"))
 
-    val parsedArch = Arch.fromMarch(meta.march)
-    if (parsedArch.isEmpty) {
-      throw new IllegalArgumentException(s"Invalid march ${meta.march}")
-    }
-    val arch       = parsedArch.get
+    val arch = Arch.fromLiteral(meta.march)
 
-    val csrConfigFilename = arch.xlen match {
-      case 32 => "csr32.json"
-      case 64 => "csr64.json"
-      case _  => throw new IllegalArgumentException("Invalid arch or xlen")
-    }
-    val csrs              = read[Seq[CSR]](os.read(sailModelDir / "csr" / csrConfigFilename))
-
-    os.makeDir.all(outputDir / "arch")
-    genExtEnable(arch)
-    genArchStatesReset(arch, csrs)
-    genArchStatesDef(arch, csrs)
-    genArchStatesRW(arch, csrs)
+    genReset(arch)
+    genArchStatesDef(arch)
+    genArchStatesOp(arch)
 
     genRVXLENSail(arch)
     genRVSail(arch)
-    genCSRBFDef(csrs)
   }
 
   def genSailAst(inst: Instruction): String = {
@@ -246,7 +220,7 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
   }
 
   def genSailExcute(arch: Arch, inst: Instruction): String = {
-    val path = sailModelDir / inst.instructionSet.name / inst.name.replace(".", "_")
+    val path = params.sailModelDir / inst.instructionSet.name / s"${inst.name.replace(".", "_")}.sail"
 
     if (os.exists(path)) {
       "function clause execute " + "(" +
@@ -312,13 +286,10 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
   }
 
   def genRVSail(arch: Arch): Unit = {
-    val rvCorePath      = outputDir / "rv_core.sail"
-    val illegalInstPath = sailModelDir / "arch" / "illegal"
-
     os.write.over(
-      rvCorePath,
+      sail_core_path,
       org.chipsalliance.rvdecoderdb
-        .instructions(riscvOpCodesPath)
+        .instructions(params.riscvOpCodesPath)
         .filter(inst => !inst.name.endsWith(".N"))
         .filter(inst =>
           arch.extensions.exists(ext => {
@@ -335,287 +306,113 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
         .mkString
         + s"""mapping clause encdec = ILLEGAL(s) <-> s
              |function clause execute (ILLEGAL(s)) = {
-             ${os.read(illegalInstPath).lines().map(l => "|\t" + l + "\n").toArray().mkString}
+             ${os.read(user_illegal_path).lines().map(l => "|\t" + l + "\n").toArray().mkString}
              |}
              |""".stripMargin
     )
   }
 
-  def genCSRBitfields(csr: CSR): String = {
-    (if (csr.width == "64") {
-       "bitfield " + csr.csrname.toUpperCase + " : " + "bits(64) = "
-     } else if (csr.width == "32") {
-       "bitfield " + csr.csrname.toUpperCase + " : " + "bits(32) = "
-     } else {
-       "bitfield " + csr.csrname.toUpperCase + " : " + csr.width + "BITS = "
-     }) + "{\n" + (csr.bitfields match {
-      // not deal with the position for now
-      case Left(pos)  => ""
-      case Right(bfs) => bfs.map(bf => "\t" + bf.bfname + " : " + bf.bfpos).mkString(",\n")
-    }) + "\n}"
+  def genArchStatesDef(arch: Arch): Unit = {
+    val range      = if (arch.extensions.contains("e")) 0 to 15 else 0 to 31
+    val gprDefCode = range.map(i => s"register x$i : XLENBITS").mkString("\n")
+
+    os.write.over(
+      sail_states_define_path,
+      Seq(
+        "// GPRs",
+        gprDefCode,
+        "// Privilege",
+        "register cur_privilege : Privilege"
+      ).mkString("\n")
+    )
   }
 
-  def genCSRRead(csr: CSR): String = {
-    val readLHS = "function clause read_CSR" + "(" + csr.number + ")"
-    val readRHS = csr.csrname + ".bits"
-    readLHS + " = " + readRHS
-  }
-
-  def genCSRBFBitSet(csr: CSR): String = {
-    (csr.bitfields match {
-      case Left(pos)  => "bitSets"
-      case Right(bfs) =>
-        bfs
-          .map { bf =>
-            val path = sailModelDir / "csr" / "W" / csr.csrname / bf.bfname
-
-            if (csr.width == "64") {
-              s"function set_${csr.csrname}_${bf.bfname}(v : bits(64)) -> unit = ${if (os.exists(path)) {
-                  "{" + "\n" +
-                    os.read(path)
-                      .map(line => line)
-                      .mkString + "\n" +
-                    "}"
-                } else {
-                  "{\n\t" + csr.csrname + " = Mk_" + csr.csrname.toUpperCase + "(v)\n}"
-                }}"
-            } else if (csr.width == "32") {
-              s"function set_${csr.csrname}_${bf.bfname}(v : bits(32)) -> unit = ${if (os.exists(path)) {
-                  "{" + "\n" +
-                    os.read(path)
-                      .map(line => line)
-                      .mkString + "\n" +
-                    "}"
-                } else {
-                  "{\n\t" + csr.csrname + " = Mk_" + csr.csrname.toUpperCase + "(v)\n}"
-                }}"
-            } else {
-              s"function set_${csr.csrname}_${bf.bfname}(v : ${csr.width}BITS) -> unit = ${if (os.exists(path)) {
-                  "{" + "\n" +
-                    os.read(path)
-                      .map(line => line)
-                      .mkString + "\n" +
-                    "}"
-                } else {
-                  "{\n\t" + csr.csrname + " = Mk_" + csr.csrname.toUpperCase + "(v)\n}"
-                }}"
-            }
-          }
-          .mkString("\n")
-    }) + "\n"
-  }
-
-  def genCSRBFBitGet(csr: CSR): String = {
-    (csr.bitfields match {
-      case Left(pos)  => "bitSets"
-      case Right(bfs) =>
-        bfs
-          .map { bf =>
-            val path = sailModelDir / "csr" / "R" / csr.csrname / bf.bfname
-
-            if (csr.width == "64") {
-              s"function get_${csr.csrname}_${bf.bfname}() -> bits(64) = ${if (os.exists(path)) {
-                  "{" + "\n" +
-                    os.read(path)
-                      .map(line => line)
-                      .mkString + "\n" +
-                    "}"
-                } else {
-                  "{\n\t" + csr.csrname + ".bits\n}"
-                }}"
-            } else if (csr.width == "32") {
-              s"function get_${csr.csrname}_${bf.bfname}() -> bits(32) = ${if (os.exists(path)) {
-                  "{" + "\n" +
-                    os.read(path)
-                      .map(line => line)
-                      .mkString + "\n" +
-                    "}"
-                } else {
-                  "{\n\t" + csr.csrname + ".bits\n}"
-                }}"
-            } else {
-              s"function get_${csr.csrname}_${bf.bfname}() -> ${csr.width}BITS = ${if (os.exists(path)) {
-                  "{" + "\n" +
-                    os.read(path)
-                      .map(line => line)
-                      .mkString + "\n" +
-                    "}"
-                } else {
-                  "{\n\t" + csr.csrname + ".bits\n}"
-                }}"
-            }
-          }
-          .mkString("\n")
-    }) + "\n"
-  }
-
-  def genCSRBFWriteFunc(csr: CSR): String = {
-    (if (csr.width == "64") {
-       "function write_" + csr.csrname + "(v : bits(64))" + " -> " + csr.csrname.toUpperCase
-     } else if (csr.width == "32") {
-       "function write_" + csr.csrname + "(v : bits(32))" + " -> " + csr.csrname.toUpperCase
-     } else {
-       "function write_" + csr.csrname + "(v : " + csr.width + "BITS)" + " -> " + csr.csrname.toUpperCase
-     }) + " = {\n" + "\t" + csr.csrname + " = Mk_" + csr.csrname.toUpperCase + "(v);\n\t" + csr.csrname + "\n}"
-  }
-
-  def genCSRWrite(csr: CSR): String = {
-    val writeLHS = "function clause write_CSR" + "(" + csr.number + ", value" + ")"
-    val writeRHS =
-      "{\n" + "\t" + csr.csrname + " = write_" + csr.csrname + "(value);" + "\n\t" + csr.csrname + ".bits" + "\n}"
-    writeLHS + " = " + writeRHS
-  }
-
-  def genGPRDef(arch: Arch): String = {
+  def genReset(arch: Arch): Unit = {
     val range = if (arch.extensions.contains("e")) 0 to 15 else 0 to 31
-    range.map(i => s"register x$i : XLENBITS").mkString("\n")
+
+    val bitVec = s"bits(${arch.xlen})"
+
+    val gpr_reset_code = range
+      .map(i =>
+        Seq(
+          s"""val get_resetval_x${i} = pure "get_resetval_x${i}" : unit -> ${bitVec}""",
+          s"""function reset_x${i}() : unit -> unit = { x${i} = get_resetval_x${i}() }"""
+        ).mkString("\n")
+      )
+      .mkString("\n")
+
+    val csrs           = os.walk(user_csr_path).filter(_.ext == "sail").map(p => p.baseName)
+    val csr_reset_code = csrs
+      .map(csr =>
+        s"""val reset_${csr} : unit -> unit"""
+      )
+      .mkString("\n")
+
+    os.write.over(
+      sail_states_reset_path,
+      Seq(
+        "// GPRs",
+        gpr_reset_code,
+        "// CSRs",
+        csr_reset_code
+      ).mkString("\n")
+    )
+
+    val overallResetCode = s"""
+      |function reset() : unit -> unit = {
+      |${range.map(i => s"  reset_x$i();").mkString("\n")}
+      |
+      |${csrs.map(csr => s"  reset_${csr}();").mkString("\n")}
+      |}""".stripMargin
+    os.write.append(sail_states_reset_path, overallResetCode)
   }
 
-  // TODO: this should be provide by user instead of generate like this
-  def genGPRRW(arch: Arch): String = {
-    def toBinaryString5(i: Int): String = {
+  def genGPROp(arch: Arch): String = {
+    def to5BitStr(i: Int): String = {
       String.format("%5s", i.toBinaryString).replace(' ', '0')
     }
 
-    val range = if (arch.extensions.contains("e")) 1 to 15 else 1 to 31
-
-    range.map { i =>
-      val bit = toBinaryString5(i)
-      s"""function clause read_GPR(0b${bit}) = x$i
-         |function clause write_GPR(0b${bit}, v : XLENBITS) = {
-         |\twrite_GPR_hook(0b${bit}, v);
-         |\tx$i = v
-         |}
-         |""".stripMargin
-    }.mkString +
-    s"""function clause read_GPR(0b00000) = x0
+    val x0OpCode = s"""function clause read_GPR(0b00000) = x0
        |// write to x0 is a no-op
        |function clause write_GPR(0b00000, v : XLENBITS) = {
        |\t()
        |}
        |""".stripMargin
+
+    val range = if (arch.extensions.contains("e")) 1 to 15 else 1 to 31
+
+    val regOpCode = range
+      .map { i =>
+        val bit = to5BitStr(i)
+        s"""function clause read_GPR(0b${bit}) = x$i
+         |function clause write_GPR(0b${bit}, v : XLENBITS) = {
+         |\twrite_GPR_hook(0b${bit}, v);
+         |\tx$i = v
+         |}
+         |""".stripMargin
+      }
+      .mkString("\n")
+
+    x0OpCode + "\n" + regOpCode
   }
 
-  def genCSRRegDef(csrs: Seq[CSR]): String = {
-    csrs.map(csr => s"register ${csr.csrname} : ${csr.csrname.toUpperCase}\n").mkString
+  def genCSRsOp(): String = {
+    os.walk(user_csr_path)
+      .filter(_.ext == "sail")
+      .map(os.read(_))
+      .mkString("\n\n")
   }
 
-  def genArchStatesDef(arch: Arch, csrs: Seq[CSR]): Unit = {
-    val archStatesPath = outputDir / "arch" / "arch_states.sail"
-
+  def genArchStatesOp(arch: Arch): Unit = {
     os.write.over(
-      archStatesPath,
-      "// GPRs\n" +
-        genGPRDef(arch) + "\n" +
-        "// CSRs\n" +
-        genCSRRegDef(csrs) + "\n" +
-        "// Privilege\n" +
-        "register cur_privilege : Privilege\n"
-    )
-  }
-
-  def genCSRBFDef(csrs: Seq[CSR]): Unit = {
-    val csrBFPath = outputDir / "arch" / "arch_state_csr_bf.sail"
-
-    os.write.over(csrBFPath, csrs.map(csr => genCSRBitfields(csr) + "\n\n"))
-  }
-
-  def genArchStatesReset(arch: Arch, csrs: Seq[CSR]): Unit = {
-    val archStatesPath = outputDir / "arch" / "arch_states_reset.sail"
-
-    val range = if (arch.extensions.contains("e")) 0 to 15 else 0 to 31
-
-    // generate reset
-    os.write.over(
-      archStatesPath,
-      "// GPRs\n" +
-        (
-          range
-            .map(i =>
-              s"""val get_resetval_x${i} = pure "get_resetval_x${i}" : unit -> """
-                + (if (arch.xlen == 32) "bits(32)"
-                   else "bits(64)")
-            )
-            .mkString("\n")
-            + "\n"
-            + range
-              .map(i => s"function reset_x$i() : unit -> unit = { x$i = get_resetval_x$i(); }")
-              .mkString("\n")
-        ) +
-        "\n" +
-        "// CSRs\n" +
-        csrs
-          .map(csr =>
-            s"""val get_resetval_${csr.csrname} = pure "get_resetval_${csr.csrname}" : unit -> """
-              + (if (csr.width == "32") "bits(32)"
-                 else "bits(64)")
-          )
-          .mkString("\n")
-        + "\n"
-        + csrs
-          .map(csr => s"""function reset_${csr.csrname}() : unit -> unit = {
-                         |\t${csr.csrname} = Mk_${csr.csrname.toUpperCase}(get_resetval_${csr.csrname}())
-                         |}""".stripMargin)
-          .mkString("\n")
-    )
-
-    // generate overall reset
-    os.write.append(
-      archStatesPath,
-      "\n" +
-        "function reset() : unit -> unit = {\n" +
-        (
-          range.map(i => s"\treset_x$i();").mkString("\n")
-        ) +
-        "\n" +
-        csrs.map(csr => s"\treset_${csr.csrname}();").mkString("\n") +
-        "\n}"
-    )
-  }
-
-  def genArchStatesRW(arch: Arch, csrs: Seq[CSR]): Unit = {
-    val archStatesPath = outputDir / "arch" / "arch_states_rw.sail"
-
-    os.write.over(
-      archStatesPath,
-      "// GPRs\n" +
-        genGPRRW(arch) +
-        "\n" +
-        "// CSRs\n" +
-        csrs
-          .map(csr =>
-            genCSRBFBitGet(csr) +
-              "\n" +
-              genCSRRead(csr) +
-              "\n" +
-              genCSRBFBitSet(csr) +
-              "\n" +
-              genCSRBFWriteFunc(csr) +
-              "\n" +
-              genCSRWrite(csr) +
-              "\n"
-          )
-          .mkString
-    )
-  }
-
-  def genExtEnable(arch: Arch): Unit = {
-    val extPath = outputDir / "arch" / "arch_states_priv_enable.sail"
-    os.makeDir.all(extPath / os.up)
-
-    os.write.over(
-      extPath,
-      arch.extensions
-        .map(ext => s"function clause extensionEnabled(Ext_${ext.toUpperCase}) = true\n")
-        .mkString
+      sail_states_operation_path,
+      Seq("// GPRs", genGPROp(arch), "// CSRs", genCSRsOp()).mkString("\n")
     )
   }
 
   def genRVXLENSail(arch: Arch): Unit = {
-    val xlenPath = outputDir / "rv_xlen.sail"
-
     os.write.over(
-      xlenPath,
+      sail_xlen_path,
       s"""type XLEN : Int = ${arch.xlen}
          |type MXLEN : Int = ${arch.xlen}
          |type SXLEN : Int = ${arch.xlen}

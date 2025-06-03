@@ -52,7 +52,7 @@ scattered function is_CSR_defined
 val read_CSR : csreg -> XLENBITS
 scattered function read_CSR
 
-val write_CSR : (csreg, XLENBITS) -> XLENBITS
+val write_CSR : (csreg, XLENBITS) -> bool
 scattered function write_CSR
 
 type priv_level = bits(2)

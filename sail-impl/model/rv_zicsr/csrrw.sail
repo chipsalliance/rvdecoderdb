@@ -7,6 +7,6 @@ if rd != 0b00000 then {
   let old_value: XLENBITS = zero_extend(read_CSR(csr));
   write_GPR(rd, old_value);
   let init_value: XLENBITS = read_GPR(rs1);
-  write_CSR(csr, init_value);
+  let _ = write_CSR(csr, init_value);
 };
 tick_pc();

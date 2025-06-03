@@ -9,6 +9,6 @@ let csr_value: XLENBITS = zero_extend(read_CSR(csr));
 if rs1 != 0b00000 then {
   write_GPR(rd, csr_value);
   let bit_mask: XLENBITS = ~(read_GPR(rs1));
-  write_CSR(csr, csr_value & bit_mask);
+  let _ = write_CSR(csr, csr_value & bit_mask);
 };
 tick_pc();

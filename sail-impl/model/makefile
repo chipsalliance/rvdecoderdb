@@ -45,11 +45,9 @@ $(BUILD)/src/rv_model.c:
 		$(SAIL_IMPL_SRC_DIR)/lib/scattered.sail \
 		$(GENERATED_SAIL_SRC_DIR)/rv_xlen.sail \
 		$(SAIL_IMPL_SRC_DIR)/arch/arch_prelude.sail \
-		$(GENERATED_SAIL_SRC_DIR)/arch/arch_states_priv_enable.sail \
-		$(GENERATED_SAIL_SRC_DIR)/arch/arch_state_csr_bf.sail \
-		$(GENERATED_SAIL_SRC_DIR)/arch/arch_states.sail \
-		$(GENERATED_SAIL_SRC_DIR)/arch/arch_states_rw.sail \
-		$(GENERATED_SAIL_SRC_DIR)/arch/arch_states_reset.sail \
+		$(GENERATED_SAIL_SRC_DIR)/arch/states_define.sail \
+		$(GENERATED_SAIL_SRC_DIR)/arch/states_reset.sail \
+		$(GENERATED_SAIL_SRC_DIR)/arch/states_op.sail \
 		$(SAIL_IMPL_SRC_DIR)/arch/extern_op.sail \
 		$(SAIL_IMPL_SRC_DIR)/arch/step.sail \
 		$(GENERATED_SAIL_SRC_DIR)/rv_core.sail \

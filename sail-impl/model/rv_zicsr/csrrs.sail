@@ -6,11 +6,11 @@
 // Both CSRRS and CSRRC always read the addressed CSR and cause any read side
 // effects regardless of rs1 and rd fields.
 
-let csr_value: XLENBITS = zero_extend(csr_value);
+let csr_value: XLENBITS = zero_extend(read_CSR(csr));
 if rs1 != 0b00000 then {
   write_GPR(rd, csr_value);
   let bit_mask: XLENBITS = read_GPR(rs1);
   let result: XLENBITS = csr_value | bit_mask;
-  write_CSR(csr, result);
+  let _ = write_CSR(csr, result);
 };
 tick_pc();

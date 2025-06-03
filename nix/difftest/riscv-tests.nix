@@ -16,7 +16,6 @@ rv32-stdenv.mkDerivation {
     cp -r ${../../difftest/riscv-test-env} $sourceRoot/env
   '';
 
-
   configureFlags = [
     # to match rocket-tools path
     "--prefix=${placeholder "out"}/${rv32-stdenv.targetPlatform.config}"

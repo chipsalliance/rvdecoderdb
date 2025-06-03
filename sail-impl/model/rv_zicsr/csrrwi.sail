@@ -4,7 +4,7 @@
 if rd != 0b00000 then {
   let old_value: XLENBITS = zero_extend(read_CSR(csr));
   write_GPR(rd, old_value);
-  let initial: XLENBITS = zero_extend(zimm5);
-  write_CSR(csr, initial);
+  let initial: XLENBITS = zero_extend(zimm);
+  let _ = write_CSR(csr, initial);
 };
 tick_pc();

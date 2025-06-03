@@ -7,10 +7,10 @@
 // effects regardless of rd and rs1 fields.
 
 let csr_value: XLENBITS = zero_extend(read_CSR(csr));
-if zimm5 != 0b00000 then {
+if zimm != 0b00000 then {
   write_GPR(rd, csr_value);
-  let value: XLENBITS = zero_extend(zimm5);
+  let value: XLENBITS = zero_extend(zimm);
   let result: XLENBITS = csr_value & ~(value);
-  write_CSR(csr, result);
+  let _ = write_CSR(csr, result);
 };
 tick_pc();
