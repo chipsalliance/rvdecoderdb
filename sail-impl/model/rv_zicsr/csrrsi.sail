@@ -6,11 +6,11 @@
 // Both CSRRSI and CSRRCI will always read the CSR and cause any read side
 // effects regardless of rd and rs1 fields.
 
-let csr_value: XLENBITS = zero_extend(read_CSR(csr));
+let csr_value: bits(64) = zero_extend(read_CSR(csr));
 if zimm != 0b00000 then {
   write_GPR(rd, csr_value);
-  let value: XLENBITS = zero_extend(zimm);
-  let result: XLENBITS = csr_value | value;
+  let value: bits(64) = zero_extend(zimm);
+  let result: bits(64) = csr_value | value;
   let _ = write_CSR(csr, result);
 };
 PC = PC + 4;

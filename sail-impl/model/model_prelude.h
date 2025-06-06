@@ -12,7 +12,7 @@ uint32_t inst_fetch(uint64_t pc);
 unit fence_i(uint8_t pred, uint8_t succ);
 bool is_reset(unit);
 
-// phy_read* API all have one argument `address` with `XLENBITS` width, return
+// phy_read* API all have one argument `address` with `bits(64)` width, return
 // specific length value from that given address.
 uint8_t phy_read_byte(uint32_t);
 uint16_t phy_read_half_word(uint32_t);

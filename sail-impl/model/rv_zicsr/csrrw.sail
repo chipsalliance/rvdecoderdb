@@ -4,9 +4,9 @@
 // > any of the side effects that might occur on a CSR read.
 //
 if rd != 0b00000 then {
-  let old_value: XLENBITS = zero_extend(read_CSR(csr));
+  let old_value: bits(64) = zero_extend(read_CSR(csr));
   write_GPR(rd, old_value);
-  let init_value: XLENBITS = read_GPR(rs1);
+  let init_value: bits(64) = read_GPR(rs1);
   let _ = write_CSR(csr, init_value);
 };
 PC = PC + 4;

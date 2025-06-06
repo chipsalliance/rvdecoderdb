@@ -1,6 +1,6 @@
-bitfield mcause_state : XLENBITS = {
-  INTERRUPT : XLEN - 1,
-  EXCEPTION_CODE : XLEN - 2 .. 0,
+bitfield mcause_state : bits(64) = {
+  INTERRUPT : 64 - 1,
+  EXCEPTION_CODE : 64 - 2 .. 0,
 }
 register Mcause : mcause_state
 
@@ -8,11 +8,7 @@ function clause read_CSR(0x342) = {
   Mcause.bits
 }
 
-function clause write_CSR(0x342, value : XLENBITS) = {
+function clause write_CSR(0x342, value : bits(64)) = {
   Mcause = Mk_mcause_state(value);
   true
-}
-
-function reset_mcause() = {
-  Mcause = Mk_mcause_state(zeros());
 }

@@ -9,8 +9,8 @@ Mstatus[MPP] = privLevel_to_bits(Machine);
 Mtval = PC;
 Mepc = PC;
 
-let base : XLENBITS = Mtvec[BASE] @ 0b00;
-let t : XLENBITS = match (trapVectorMode_of_bits(Mtvec[MODE])) {
+let base : bits(64) = Mtvec[BASE] @ 0b00;
+let t : bits(64) = match (trapVectorMode_of_bits(Mtvec[MODE])) {
   TV_Direct =>  base,
   TV_Vector =>  if Mcause[INTERRUPT] == 0b1
                 then (base + (zero_extend(Mcause[EXCEPTION_CODE] << 2)))

@@ -42,13 +42,9 @@ $(BUILD)/src/rv_model.c:
 		--c-include model_prelude.h \
 		--c-include sail_failure.h \
 		$(SAIL_IMPL_SRC_DIR)/lib/prelude.sail \
-		$(SAIL_IMPL_SRC_DIR)/lib/scattered.sail \
-		$(GENERATED_SAIL_SRC_DIR)/rv_xlen.sail \
-		$(SAIL_IMPL_SRC_DIR)/arch/arch_prelude.sail \
-		$(GENERATED_SAIL_SRC_DIR)/arch/states_define.sail \
-		$(GENERATED_SAIL_SRC_DIR)/arch/states_reset.sail \
+		$(SAIL_IMPL_SRC_DIR)/arch/prelude.sail \
+		$(SAIL_IMPL_SRC_DIR)/arch/states.sail \
 		$(GENERATED_SAIL_SRC_DIR)/arch/states_op.sail \
-		$(SAIL_IMPL_SRC_DIR)/arch/extern_op.sail \
 		$(SAIL_IMPL_SRC_DIR)/arch/step.sail \
 		$(GENERATED_SAIL_SRC_DIR)/rv_core.sail \
 		-o build/src/rv_model

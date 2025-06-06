@@ -1,3 +1,23 @@
+scattered union ast
+
+val execute : ast -> unit
+scattered function execute
+
+val encdec : ast <-> bits(32)
+scattered mapping encdec
+
+val encdec_compressed : ast <-> bits(16)
+scattered mapping encdec_compressed
+
+val ext_decode_compressed : bits(16) -> ast
+function ext_decode_compressed(bv) = encdec_compressed(bv)
+
+val ext_decode : bits(32) -> ast
+function ext_decode(bv) = encdec(bv)
+
+union clause ast = ILLEGAL : bits(32)
+union clause ast = C_ILLEGAL : bits(16)
+
 union exception = {
   Error_not_implemented : string,
   Error_internal_error  : unit
@@ -12,15 +32,15 @@ function internal_error(s) = {
     throw Error_internal_error()
 }
 
-register PC : XLENBITS
+register PC : bits(64)
 
 // GPR
 type regidx  = bits(5)
 
-val read_GPR : regidx -> XLENBITS
+val read_GPR : regidx -> bits(64)
 scattered function read_GPR
 
-val write_GPR : (regidx, XLENBITS) -> unit
+val write_GPR : (regidx, bits(64)) -> unit
 scattered function write_GPR
 
 type cregidx = bits(3)
@@ -34,10 +54,10 @@ type csreg   = bits(12)
 val is_CSR_defined : (csreg) -> bool
 scattered function is_CSR_defined
 
-val read_CSR : csreg -> XLENBITS
+val read_CSR : csreg -> bits(64)
 scattered function read_CSR
 
-val write_CSR : (csreg, XLENBITS) -> bool
+val write_CSR : (csreg, bits(64)) -> bool
 scattered function write_CSR
 
 type priv_level = bits(2)
@@ -67,10 +87,10 @@ union ExceptionType = {
  E_Extension          : ext_exc_type
 }
 
-val num_of_ext_exc_type : ext_exc_type -> {'n, (0 <= 'n < XLEN). int('n)}
+val num_of_ext_exc_type : ext_exc_type -> {'n, (0 <= 'n < 64). int('n)}
 function num_of_ext_exc_type(e) = 24
 
-val num_of_ExceptionType : ExceptionType -> {'n, (0 <= 'n < XLEN). int('n)}
+val num_of_ExceptionType : ExceptionType -> {'n, (0 <= 'n < 64). int('n)}
 function num_of_ExceptionType(e) =
   match (e) {
     E_Fetch_Addr_Align()   => 0,
@@ -143,60 +163,25 @@ function trapVectorMode_of_bits (m) =
     _    => TV_Reserved
   }
 
-// extensions def
-scattered enum extension
-enum clause extension = Ext_I
-enum clause extension = Ext_A
-enum clause extension = Ext_M
-enum clause extension = Ext_F
-enum clause extension = Ext_D
-enum clause extension = Ext_C
-enum clause extension = Ext_B
-enum clause extension = Ext_V
-enum clause extension = Ext_S
-enum clause extension = Ext_U
-enum clause extension = Ext_Zicbom
-enum clause extension = Ext_Zicboz
-enum clause extension = Ext_Zicntr
-enum clause extension = Ext_Zicond
-enum clause extension = Ext_Zifencei
-enum clause extension = Ext_Zihpm
-enum clause extension = Ext_Zmmul
-enum clause extension = Ext_Zaamo
-enum clause extension = Ext_Zabha
-enum clause extension = Ext_Zalrsc
-enum clause extension = Ext_Zfa
-enum clause extension = Ext_Zfh
-enum clause extension = Ext_Zfhmin
-enum clause extension = Ext_Zfinx
-enum clause extension = Ext_Zdinx
-enum clause extension = Ext_Zca
-enum clause extension = Ext_Zcb
-enum clause extension = Ext_Zcd
-enum clause extension = Ext_Zcf
-enum clause extension = Ext_Zba
-enum clause extension = Ext_Zbb
-enum clause extension = Ext_Zbc
-enum clause extension = Ext_Zbkb
-enum clause extension = Ext_Zbkc
-enum clause extension = Ext_Zbkx
-enum clause extension = Ext_Zbs
-enum clause extension = Ext_Zknd
-enum clause extension = Ext_Zkne
-enum clause extension = Ext_Zknh
-enum clause extension = Ext_Zkr
-enum clause extension = Ext_Zksed
-enum clause extension = Ext_Zksh
-enum clause extension = Ext_Zhinx
-enum clause extension = Ext_Sscofpmf
-enum clause extension = Ext_Sstc
-enum clause extension = Ext_Svinval
-enum clause extension = Ext_Svnapot
-enum clause extension = Ext_Svpbmt
-enum clause extension = Ext_Smcntrpmf
-
-val extensionEnabled : extension -> bool
-scattered function extensionEnabled
-
 // an external hook that get applied *before* register get written.
-val write_GPR_hook = pure "write_GPR_hook" : (regidx, XLENBITS) -> unit
+val write_GPR_hook = pure "write_GPR_hook" : (regidx, bits(64)) -> unit
+
+val inst_fetch = pure "inst_fetch" : bits(64) -> bits(32)
+val fence_i = pure "fence_i" : (bits(4), bits(4)) -> unit
+val is_reset = pure "is_reset" : unit -> bool
+
+// phy_read* API all have one argument `address` with `bits(64)` width, return
+// specific length value from that given address.
+val phy_read_byte = pure "phy_read_byte" : bits(64) -> bits(8)
+val phy_read_half_word = pure "phy_read_half_word" : bits(64) -> bits(16)
+val phy_read_word = pure "phy_read_word" : bits(64) -> bits(32)
+val phy_read_double_word = pure "phy_read_double_word" : bits(64) -> bits(64)
+
+// phy_write* API accept two arguments, write specific length data from the
+// second argument `value` to the first argument `address`.
+val phy_write_byte = pure "phy_write_byte" : (bits(64), bits(8)) -> unit
+val phy_write_half_word = pure "phy_write_half_word" : (bits(64), bits(16)) -> unit
+val phy_write_word = pure "phy_write_word" : (bits(64), bits(32)) -> unit
+val phy_write_double_word = pure "phy_write_double_word" : (bits(64), bits(64)) -> unit
+
+val exception_raised = pure "exception_raised" : unit -> bool
