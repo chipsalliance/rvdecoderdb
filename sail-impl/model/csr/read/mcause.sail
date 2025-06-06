@@ -1,0 +1,1 @@
+mcause_interrupt @ mcause_exception_code

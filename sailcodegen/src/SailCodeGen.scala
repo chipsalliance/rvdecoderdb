@@ -80,12 +80,10 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
     params.outputDir / "arch"
   }
 
-  private val sail_ext_enabled_path      = archDir / "ext_enabled.sail"
-  private val sail_states_reset_path     = archDir / "states_reset.sail"
   private val sail_states_operation_path = archDir / "states_op.sail"
   private val sail_core_path             = params.outputDir / "rv_core.sail"
 
-  private val user_illegal_path = {
+  lazy private val user_illegal_path = {
     if (!os.exists(params.sailModelDir / "arch" / "illegal.sail")) {
       throw new Exception("illegal.sail not found")
     }
@@ -323,9 +321,7 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
 
     val csrs           = os.walk(user_csr_path).filter(_.ext == "sail").map(p => p.baseName)
     val csr_reset_code = csrs
-      .map(csr =>
-        s"""val reset_${csr} : unit -> unit"""
-      )
+      .map(csr => s"""val reset_${csr} : unit -> unit""")
       .mkString("\n")
 
     os.write.over(
@@ -377,9 +373,38 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
   }
 
   def genCSRsOp(): String = {
-    os.walk(user_csr_path)
-      .filter(_.ext == "sail")
-      .map(os.read(_))
+    val csrs = os.read
+      .lines(user_csr_path / "csrs.csv")
+      .map(line =>
+        line match {
+          case s"${number},${csrname}" => (number, csrname)
+          case _                       => throw new Exception(s"invalid csv line: ${line}")
+        }
+      )
+
+    csrs
+      .map { case (number, csrname) => {
+        val read_op_path  = user_csr_path / "read" / s"${csrname}.sail"
+        if (!os.exists(read_op_path)) {
+          throw new Exception(s"missing read operation for ${csrname}")
+        }
+        val write_op_path = user_csr_path / "write" / s"${csrname}.sail"
+        if (!os.exists(write_op_path)) {
+          throw new Exception(s"missing write operation for ${csrname}")
+        }
+
+        val csrReadCode = s"""
+        |function clause read_CSR(${number}) = {
+        |${os.read(read_op_path)}
+        |}""".stripMargin
+
+        val csrWriteCode = s"""
+        |function clause write_CSR(${number}, value) = {
+        |${os.read(write_op_path)}
+        |}""".stripMargin
+
+        csrReadCode + "\n" + csrWriteCode
+      }}
       .mkString("\n\n")
   }
 
