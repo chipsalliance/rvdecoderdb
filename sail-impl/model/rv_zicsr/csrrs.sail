@@ -13,4 +13,4 @@ if rs1 != 0b00000 then {
   let result: XLENBITS = csr_value | bit_mask;
   let _ = write_CSR(csr, result);
 };
-tick_pc();
+PC = PC + 4;

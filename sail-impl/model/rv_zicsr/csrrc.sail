@@ -11,4 +11,4 @@ if rs1 != 0b00000 then {
   let bit_mask: XLENBITS = ~(read_GPR(rs1));
   let _ = write_CSR(csr, csr_value & bit_mask);
 };
-tick_pc();
+PC = PC + 4;

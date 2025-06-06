@@ -7,4 +7,4 @@ if rd != 0b00000 then {
   let initial: XLENBITS = zero_extend(zimm);
   let _ = write_CSR(csr, initial);
 };
-tick_pc();
+PC = PC + 4;

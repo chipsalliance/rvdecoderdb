@@ -17,4 +17,4 @@ let t : XLENBITS = match (trapVectorMode_of_bits(Mtvec[MODE])) {
                 else base,
   TV_Reserved => internal_error("Invalid mtvec mode")
 };
-set_pc(t);
+PC = t;

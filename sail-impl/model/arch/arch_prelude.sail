@@ -14,21 +14,6 @@ function internal_error(s) = {
 
 register PC : XLENBITS
 
-val set_pc : XLENBITS -> unit
-function set_pc(pc) = {
-  PC = pc;
-}
-
-val tick_pc_with : int -> unit
-function tick_pc_with(i) = {
-  set_pc(PC + i);
-}
-
-val tick_pc : unit -> unit
-function tick_pc() = {
-  tick_pc_with(4);
-}
-
 // GPR
 type regidx  = bits(5)
 

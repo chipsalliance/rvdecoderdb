@@ -8,7 +8,7 @@ use tracing::{event, Level};
 /// user knows the side effect of this function.
 pub(crate) unsafe fn reset_vector(entry: u64) {
     unsafe {
-        model::zset_pc(entry);
+        model::zPC = entry;
     }
 }
 

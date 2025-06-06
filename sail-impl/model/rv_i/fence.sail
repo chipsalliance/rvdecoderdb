@@ -1,2 +1,2 @@
 fence_i(pred, succ);
-tick_pc();
+PC = PC + 4;

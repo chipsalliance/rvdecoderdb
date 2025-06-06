@@ -3,5 +3,5 @@ let rs2_val = read_GPR(rs2);
 let taken : bool = rs1_val <_s rs2_val;
 if taken then {
   let t : XLENBITS = PC + sign_extend(bimm12 @ 0b0);
-  set_pc(t);
+  PC = t;
 }

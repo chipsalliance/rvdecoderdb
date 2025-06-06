@@ -9,4 +9,4 @@ if rd != 0b00000 then {
   let init_value: XLENBITS = read_GPR(rs1);
   let _ = write_CSR(csr, init_value);
 };
-tick_pc();
+PC = PC + 4;

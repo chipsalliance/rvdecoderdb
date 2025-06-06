@@ -8,7 +8,6 @@ typedef uint64_t MarchBits;
 
 Unit zstep(Unit zunit);
 void model_init(void);
-MarchBits zset_pc(MarchBits pc);
 
 MarchBits zPC;
 
