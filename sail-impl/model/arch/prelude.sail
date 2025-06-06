@@ -155,12 +155,17 @@ function privLevel_to_bits (p) =
 type tv_mode = bits(2)
 enum TrapVectorMode = {TV_Direct, TV_Vector, TV_Reserved}
 
-val trapVectorMode_of_bits : tv_mode -> TrapVectorMode
-function trapVectorMode_of_bits (m) =
+function trap_vector_mode_of_bits (m) : tv_mode -> TrapVectorMode =
   match (m) {
     0b00 => TV_Direct,
     0b01 => TV_Vector,
     _    => TV_Reserved
+  }
+function trap_vector_mode_to_bits (m) : TrapVectorMode -> tv_mode =
+  match (m) {
+    TV_Direct => 0b00,
+    TV_Vector => 0b01,
+    TV_Reserved => 0b00,
   }
 
 // an external hook that get applied *before* register get written.

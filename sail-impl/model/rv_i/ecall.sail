@@ -6,20 +6,20 @@ let e : ExceptionType = match(current_privilege) {
 
 // deal with delegation
 let idx = num_of_ExceptionType(e);
-Mcause[INTERRUPT] = 0b0;
-Mcause[EXCEPTION_CODE] = zero_extend(exceptionType_to_bits(e));
+mcause_interrupt = 0b0;
+mcause_exception_code = zero_extend(exceptionType_to_bits(e));
 
-Mstatus[MPIE] = Mstatus[MIE];
-Mstatus[MIE] = 0b0;
-Mstatus[MPP] = privLevel_to_bits(current_privilege);
-Mtval = zeros();
-Mepc = PC;
+mpie = mie;
+mie = 0b0;
+mpp = privLevel_to_bits(current_privilege);
+mtval = zeros();
+mepc = PC;
 
-let base : bits(64) = Mtvec[BASE] @ 0b00;
-let t : bits(64) = match (trapVectorMode_of_bits(Mtvec[MODE])) {
+let base : bits(64) = mtvec_base @ 0b00;
+let t : bits(64) = match (mtvec_mode) {
   TV_Direct =>  base,
-  TV_Vector =>  if Mcause[INTERRUPT] == 0b1
-                then (base + (zero_extend(Mcause[EXCEPTION_CODE] << 2)))
+  TV_Vector =>  if mcause_interrupt == 0b1
+                then (base + (zero_extend(mcause_exception_code << 2)))
                 else base,
   TV_Reserved => internal_error("Invalid mtvec mode")
 };

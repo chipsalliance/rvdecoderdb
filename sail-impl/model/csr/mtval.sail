@@ -1,8 +1,7 @@
-register Mtval : bits(64)
-
-function clause read_CSR(0x343) = Mtval
+function clause read_CSR(0x343) = mtval
 
 function clause write_CSR(0x343, value: bits(64)) = {
-  Mtval = [value with 0 = bitzero];
+  // must be 4 aligned
+  mtval = [value with 0 = bitzero, 1 = bitzero];
   true
 }
