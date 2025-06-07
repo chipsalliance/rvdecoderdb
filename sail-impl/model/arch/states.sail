@@ -1,5 +1,5 @@
 // General Propose Register
-register x0 : bits(64)
+// register x0 is not defined to save one register space
 register x1 : bits(64)
 register x2 : bits(64)
 register x3 : bits(64)
@@ -75,7 +75,6 @@ function reset_mtvec() : unit -> unit = {
 }
 
 function reset() : unit -> unit = {
-  x0 = zeros();
   x1 = zeros();
   x2 = zeros();
   x3 = zeros();

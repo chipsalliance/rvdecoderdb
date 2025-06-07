@@ -305,54 +305,16 @@ class SailCodeGenerator(params: SailCodeGeneratorParams) {
     )
   }
 
-  def genReset(arch: Arch): Unit = {
-    val range = if (arch.extensions.contains("e")) 0 to 15 else 0 to 31
-
-    val bitVec = s"bits(${arch.xlen})"
-
-    val gpr_reset_code = range
-      .map(i =>
-        Seq(
-          s"""val get_resetval_x${i} = pure "get_resetval_x${i}" : unit -> ${bitVec}""",
-          s"""function reset_x${i}() : unit -> unit = { x${i} = get_resetval_x${i}() }"""
-        ).mkString("\n")
-      )
-      .mkString("\n")
-
-    val csrs           = os.walk(user_csr_path).filter(_.ext == "sail").map(p => p.baseName)
-    val csr_reset_code = csrs
-      .map(csr => s"""val reset_${csr} : unit -> unit""")
-      .mkString("\n")
-
-    os.write.over(
-      sail_states_reset_path,
-      Seq(
-        "// GPRs",
-        gpr_reset_code,
-        "// CSRs",
-        csr_reset_code
-      ).mkString("\n")
-    )
-
-    val overallResetCode = s"""
-      |function reset() : unit -> unit = {
-      |${range.map(i => s"  reset_x$i();").mkString("\n")}
-      |
-      |${csrs.map(csr => s"  reset_${csr}();").mkString("\n")}
-      |}""".stripMargin
-    os.write.append(sail_states_reset_path, overallResetCode)
-  }
-
   def genGPROp(arch: Arch): String = {
     def to5BitStr(i: Int): String = {
       String.format("%5s", i.toBinaryString).replace(' ', '0')
     }
 
-    val x0OpCode = s"""function clause read_GPR(0b00000) = x0
+    val x0OpCode = s"""
+       |// x0 is read-only zero
+       |function clause read_GPR(0b00000) = zeros()
        |// write to x0 is a no-op
-       |function clause write_GPR(0b00000, v : bits(64)) = {
-       |\t()
-       |}
+       |function clause write_GPR(0b00000, v : bits(64)) = ()
        |""".stripMargin
 
     val range = if (arch.extensions.contains("e")) 1 to 15 else 1 to 31
