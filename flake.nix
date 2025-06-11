@@ -63,19 +63,6 @@
                 pkgs.espresso
               ];
             };
-
-            sailEnv = pkgs.mkShell {
-              packages = with pkgs; [
-                ccls
-                metals
-                sail-riscv.sail
-              ];
-
-              inputsFrom = with pkgs.sail-riscv; [
-                sailcodegen
-                rvmodel
-              ];
-            };
           };
 
           treefmt = {

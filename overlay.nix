@@ -24,14 +24,4 @@ final: prev: {
     fetchSubmodules = false;
     sha256 = "sha256-7CV/T8gnE7+ZPfYbn38Zx8fYUosTc8bt93wk5nmxu2c=";
   };
-
-  sail-riscv = final.callPackage ./nix/sail-riscv/all-pkgs.nix { };
-
-  spike-log =
-    let
-      rv32-stdenv = prev.pkgsCross.riscv32-embedded.stdenv;
-    in
-    final.callPackage ./nix/difftest/spike-log.nix {
-      inherit rv32-stdenv;
-    };
 }
