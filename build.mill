@@ -50,7 +50,7 @@ object rvdecoderdb extends Module { m =>
 }
 
 trait RVDecoderDBJVMTestModule extends common.RVDecoderDBJVMTestModule with ScalafmtModule {
-  def dut = rvdecoderdb.jvm
+  def dut          = rvdecoderdb.jvm
   def scalaVersion = T(v.scala)
 }
 
