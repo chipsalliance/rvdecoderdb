@@ -51,7 +51,6 @@ object rvdecoderdb extends Module { m =>
 
 trait RVDecoderDBJVMTestModule extends common.RVDecoderDBJVMTestModule with ScalafmtModule {
   def dut = rvdecoderdb.jvm
-  def riscvOpcodesPath: T[Option[PathRef]] = T.input(Some(PathRef(millSourcePath / "riscv-opcodes")))
   def scalaVersion = T(v.scala)
 }
 
@@ -65,12 +64,3 @@ object rvdecoderdbtest extends Module { m =>
   object jvm extends RVDecoderDBJVMTestModule
   object js  extends RVDecoderDBJSTestModule
 }
-
-trait SailCodeGenJVMModule extends common.SailCodeGenJVMModule with ScalafmtModule {
-  def dut = rvdecoderdb.jvm
-  def riscvOpcodesPath: T[Option[PathRef]] = T.input(Some(PathRef(millSourcePath / "riscv-opcodes")))
-  def scalaVersion     = T(v.scala)
-  override def ivyDeps = T(super.ivyDeps() ++ Seq(ivy"com.lihaoyi::mainargs:0.5.0"))
-}
-
-object sailcodegen extends SailCodeGenJVMModule {}
