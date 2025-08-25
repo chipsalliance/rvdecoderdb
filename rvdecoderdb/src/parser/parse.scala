@@ -34,7 +34,9 @@ object parse {
                   case ArgLUT(a)          => a
                   case BareStr(i)         => i
                 }
+                .toIndexedSeq
             )
+            .toIndexedSeq
             .map(new RawInstruction(_))
         )
     }
