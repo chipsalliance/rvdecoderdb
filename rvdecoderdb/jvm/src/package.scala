@@ -9,10 +9,12 @@ package object rvdecoderdb {
     def isInstructionSetFile(p: os.Path) = {
       if (os.isFile(p)) {
         val base = p.baseName
-        base.startsWith("rv128_") ||
+        val ext = p.ext
+        (ext != "py") &&
+          (base.startsWith("rv128_") ||
           base.startsWith("rv64_") ||
           base.startsWith("rv32_") ||
-          base.startsWith("rv_")
+          base.startsWith("rv_"))
       } else {
         false
       }
