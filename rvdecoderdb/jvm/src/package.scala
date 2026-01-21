@@ -19,7 +19,7 @@ package object rvdecoderdb {
     }
 
     val official = os
-      .walk(riscvOpcodes)
+      .walk(riscvOpcodes / "extensions")
       .filter(isInstructionSetFile)
       .map(f => (f.baseName, os.read(f), !f.segments.contains("unratified"), false))
 
